@@ -1,4 +1,4 @@
-import { loadGameFromCloud } from './database_v2.js';
+import { loadGameFromCloud } from './database_v3.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 const firebaseConfig = {
