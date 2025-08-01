@@ -30,8 +30,125 @@
     </div>
 
     <!-- ALL your game UI divs (#game-container, #hud, etc.) go here -->
-    <div id="game-container" style="display: none;">
-        <!-- ... all the canvas, hud, unit frames, windows, etc. ... -->
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="hud">
+            <div id="player-frame" class="unit-frame">
+                <div class="portrait"><i class="fas fa-user"></i></div>
+                <div class="unit-info">
+                    <div class="name-level"><span id="player-name">Player</span><span id="player-level">Lvl 1</span></div>
+                    <div class="resource-bar"><div id="player-health-fill" class="bar-fill"></div><div id="player-health-text" class="bar-text">100 / 100</div></div>
+                    <div class="resource-bar" id="player-mana-bar"><div id="player-mana-fill" class="bar-fill"></div><div id="player-mana-text" class="bar-text">100 / 100</div></div>
+                    <div class="buff-container" id="player-buffs"></div>
+                </div>
+            </div>
+
+            <div id="stamina-bar" class="resource-bar">
+                <div id="stamina-bar-fill" class="bar-fill"></div>
+            </div>
+            
+            <div id="target-frame" class="unit-frame">
+                <div class="portrait" id="target-portrait"></div>
+                <div class="unit-info">
+                    <div class="name-level"><span id="target-name"></span><span id="target-level"></span></div>
+                    <div class="resource-bar"><div id="target-health-fill" class="bar-fill"></div><div id="target-health-text" class="bar-text"></div></div>
+                    <div class="buff-container" id="target-buffs"></div>
+                </div>
+            </div>
+            
+            <div id="quest-tracker"></div>
+            
+            <div id="bottom-ui-container">
+                <div id="action-bar"></div>
+                <div id="xp-bar"><div id="xp-bar-rested-fill"></div><div id="xp-bar-fill"></div></div>
+            </div>
+            
+            <div id="minimap"><canvas id="minimap-canvas"></canvas></div>
+            <div id="floating-text-container"></div>
+            <div id="tooltip"></div>
+
+            <div id="character-window" class="window">
+                <div class="window-header"><span>Character</span><i class="fas fa-times close-btn"></i></div>
+                <div class="window-content" id="character-content"></div>
+            </div>
+            <div id="inventory-window" class="window">
+                <div class="window-header"><span>Inventory</span><i class="fas fa-times close-btn"></i></div>
+                <div class="window-content"><div id="inventory-grid"></div><div id="currency" class="currency-container" style="margin-top: 10px; text-align: right;"></div></div>
+            </div>
+            <div id="quest-log-window" class="window">
+                <div class="window-header"><span>Quest Log</span><i class="fas fa-times close-btn"></i></div><div class="window-content" id="quest-log-content"></div>
+            </div>
+            <div id="map-window" class="window">
+                <div class="window-header"><span>World Map</span><i class="fas fa-times close-btn"></i></div>
+                <div class="window-content"><canvas id="map-canvas"></canvas></div>
+            </div>
+            <div id="talent-window" class="window">
+                <div class="window-header"><span>Talents</span><i class="fas fa-times close-btn"></i></div>
+                <div class="window-content">
+                    <div id="talent-points-display">Talent Points: 0</div>
+                    <div id="talent-tree" class="talent-tree"></div>
+                </div>
+            </div>
+            <div id="spellbook-window" class="window">
+                <div class="window-header"><span>Spellbook</span><i class="fas fa-times close-btn"></i></div>
+                <div class="window-content"><div id="spellbook-grid"></div></div>
+            </div>
+            <div id="reputation-window" class="window">
+                <div class="window-header"><span>Reputation</span><i class="fas fa-times close-btn"></i></div>
+                <div class="window-content" id="reputation-content"></div>
+            </div>
+
+            <div id="vendor-window" class="window">
+                <div class="window-header"><span>Vendor</span><i class="fas fa-times close-btn"></i></div>
+                <div class="window-content" id="vendor-content">
+                    <div class="vendor-section">
+                        <h3>Your Items (Click to Sell)</h3>
+                        <div id="vendor-player-inventory" class="vendor-grid"></div>
+                    </div>
+                    <div class="vendor-section">
+                        <h3>Vendor Sells</h3>
+                        <div id="vendor-sells-grid" class="vendor-grid"></div>
+                    </div>
+                    <div class="currency-container" style="text-align: right; margin-top: 10px;"><span id="vendor-gold-display" style="margin-right: 20px;"></span>Your Gold: <span id="vendor-player-gold"></span></div>
+                </div>
+            </div>
+            
+            <div id="crafting-window" class="window">
+                <div class="window-header"><span>Crafting</span><i class="fas fa-times close-btn"></i></div>
+                <div class="window-content" id="crafting-content">
+                    <div class="crafting-section">
+                        <h3>Recipes</h3>
+                        <div id="crafting-recipes-grid" class="crafting-grid"></div>
+                    </div>
+                    <div class="crafting-section">
+                        <h3>Materials</h3>
+                        <div id="crafting-materials-display"></div>
+                    </div>
+                    <button id="craft-button" class="craft-button" disabled>Craft</button>
+                </div>
+            </div>
+
+            <div id="storage-window" class="window">
+                <div class="window-header"><span>Storage</span><i class="fas fa-times close-btn"></i></div>
+                <div class="window-content"><div id="storage-grid"></div></div>
+            </div>
+
+            <div id="mobile-controls"><div id="joystick-area"><div id="joystick-thumb"></div></div></div>
+            <div id="mobile-action-buttons"></div>
+            <div id="system-menu">
+                <button class="sys-button" id="save-button" title="Save Game"><i class="fas fa-save"></i></button>
+                <button class="sys-button" data-window="storage-window" title="Open Storage"><i class="fas fa-box-archive"></i></button>
+                <button class="sys-button" data-window="character-window" title="Character (C)"><i class="fas fa-user-circle"></i></button>
+                <button class="sys-button" data-window="inventory-window" title="Inventory (I)"><i class="fas fa-briefcase"></i></button>
+                <button class="sys-button" data-window="spellbook-window" title="Spellbook (P)"><i class="fas fa-book"></i></button>
+                <button class="sys-button" data-window="talent-window" title="Talents (N)"><i class="fas fa-sitemap"></i></button>
+                <button class="sys-button" data-window="quest-log-window" title="Quest Log (L)"><i class="fas fa-book-open"></i></button>
+                <button class="sys-button" data-window="map-window" title="Map (M)"><i class="fas fa-map"></i></button>
+                <button class="sys-button" data-window="reputation-window" title="Reputation (U)"><i class="fas fa-users"></i></button>
+            </div>
+            <div id="death-screen"><p>You have died.</p><button id="release-spirit-button">Release Spirit</button></div>
+            <div id="res-sickness-overlay"></div>
+        </div>
     </div>
 
     <!-- Firebase SDKs -->
