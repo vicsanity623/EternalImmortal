@@ -17,7 +17,6 @@ export async function saveGameToCloud(userId, saveData) {
 
 // Function to load game data from the cloud
 export async function loadGameFromCloud(userId) {
-    // --- FIX: Get the db service here too ---
     const db = firebase.firestore();
     if (!userId) {
         console.error("No user ID provided for loading.");
@@ -27,7 +26,8 @@ export async function loadGameFromCloud(userId) {
         const userDocRef = db.collection('users').doc(userId);
         const docSnap = await userDocRef.get();
 
-        if (docSnap.exists()) {
+        // --- FIX: Change .exists to .exists() ---
+        if (docSnap.exists()) { 
             console.log("Save data found in cloud!");
             return docSnap.data().gameData;
         } else {
