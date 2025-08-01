@@ -562,25 +562,30 @@ class Game {
         this.world = new World(this.ctx, WORLD_SIZE, WORLD_SIZE);
         ParticleSystem.init(this.ctx);
 
-        // --- FIX: Create the UI object HERE, before it's ever needed. ---
+        // --- THE FINAL LOGIC ---
+        // 1. Create the UI object. It's empty for now.
         this.ui = new UI(this);
-        
+
         if (playerOptions) {
-            // This is for a BRAND NEW character
+            // 2. This is a BRAND NEW character. Create the player.
             this.player = new Player(RESPAWN_POINT.x, RESPAWN_POINT.y, this.input, playerOptions.name, playerOptions.race);
             this.player.autoSlotAbilities();
             this.spawnEntities();
+            
+            // 3. Now that the player exists, set up the action bar.
+            this.ui.setupActionbar(this.player);
+
         } else {
-            // This is for a character LOADED from the cloud
+            // 2. This is for a character LOADED from the cloud. Create a temporary player.
             this.player = new Player(RESPAWN_POINT.x, RESPAWN_POINT.y, this.input, 'Loading...', 'Human');
+            
+            // 3. Load the real data. The loadGame() function will call setupActionbar internally.
             if (!this.loadGame()) {
                 console.error("Cloud load failed unexpectedly.");
-                // As a fallback, spawn a default world if loading fails
                 this.spawnEntities(); 
             }
         }
 
-        // Now we can safely create the camera and do final setup
         this.camera = new Camera(this.player, this.canvas.width, this.canvas.height);
         
         this.ui.updateAll(this.player);
