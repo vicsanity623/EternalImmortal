@@ -1,4 +1,4 @@
-import { loadGameFromCloud } from './database.js';
+import { loadGameFromCloud } from './database_v2.js';
 
 
 const firebaseConfig = {
