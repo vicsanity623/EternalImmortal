@@ -1,6 +1,6 @@
 import { loadGameFromCloud } from './database_v2.js';
 
-
+document.addEventListener('DOMContentLoaded', () => {
 const firebaseConfig = {
   apiKey: "AIzaSyBSrk6DzJEb9u9fSpjA3r2WnZgEbzPpH44",
   authDomain: "eternal-immortal-rpg.firebaseapp.com",
