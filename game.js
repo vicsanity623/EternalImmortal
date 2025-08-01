@@ -1,4 +1,4 @@
-import { saveGameToCloud } from './database.js';
+import { saveGameToCloud, loadGameFromCloud } from './database.js';
 
 // --- Global Setup ---
 const $ = (selector) => document.querySelector(selector);
