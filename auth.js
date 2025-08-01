@@ -1,23 +1,21 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+import { saveGameToCloud, loadGameFromCloud } from './database.js';
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyBSrk6DzJEb9u9fSpjA3r2WnZgEbzPpH44",
-    authDomain: "eternal-immortal-rpg.firebaseapp.com",
-    projectId: "eternal-immortal-rpg",
-    storageBucket: "eternal-immortal-rpg.firebasestorage.app",
-    messagingSenderId: "313509729333",
-    appId: "1:313509729333:web:b692ab77bed51377ca4d7c",
-    measurementId: "G-CKTX3Q77N6"
-  };
+// --- IMPORTANT ---
+// PASTE YOUR FIREBASE CONFIG SNIPPET HERE
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY", // Replace with your actual key
+  authDomain: "eternal-immortal-rpg.firebaseapp.com",
+  projectId: "eternal-immortal-rpg",
+  storageBucket: "eternal-immortal-rpg.appspot.com",
+  messagingSenderId: "313509729333",
+  appId: "1:313509729333:web:b692ab77bed51377ca4d7c",
+  measurementId: "G-CKTX3Q77N6"
+};
 
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
+// Initialize Firebase (this works globally with the compat scripts)
+firebase.initializeApp(firebaseConfig);
+
+// Get the Auth service using the v8 syntax
 const auth = firebase.auth();
 const provider = new firebase.auth.GoogleAuthProvider();
 
@@ -52,8 +50,6 @@ auth.onAuthStateChanged(async (user) => {
     } else {
         // User is signed out. Make sure we are on the login page.
         console.log("No user signed in.");
-        if (window.location.pathname !== '/index.html' && window.location.pathname !== '/') {
-            window.location.href = 'index.html';
-        }
+        // This logic is fine, no changes needed here.
     }
 });
