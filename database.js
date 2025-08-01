@@ -1,8 +1,7 @@
-// This file assumes Firebase has been initialized in auth.js or game.js
-const db = firebase.firestore();
-
 // Function to save game data to the cloud
 export async function saveGameToCloud(userId, saveData) {
+    // --- FIX: Get the db service here, when the function is actually called ---
+    const db = firebase.firestore(); 
     if (!userId) {
         console.error("No user ID provided for saving.");
         return;
@@ -18,6 +17,8 @@ export async function saveGameToCloud(userId, saveData) {
 
 // Function to load game data from the cloud
 export async function loadGameFromCloud(userId) {
+    // --- FIX: Get the db service here too ---
+    const db = firebase.firestore();
     if (!userId) {
         console.error("No user ID provided for loading.");
         return null;
