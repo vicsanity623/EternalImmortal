@@ -2901,10 +2901,10 @@ class InputHandler {
     getMoveVector() { if(this.isMobile) return this.joystickVector; let vector = { x: 0, y: 0 }; if (this.keys['w']) vector.y -= 1; if (this.keys['s']) vector.y += 1; if (this.keys['a']) vector.x -= 1; if (this.keys['d']) vector.x += 1; return vector; }
 }
 class UI {
-    constructor(game) { 
-        this.game = game; 
-        this.minimapCanvas = $("#minimap-canvas"); 
-        this.mCtx = this.minimapCanvas.getContext("2d");
+    constructor(game) {
+        this.game = game;
+        this.canvas = $('#hud-canvas');
+        this.ctx = this.canvas.getContext('2d');
         this.mapCanvas = $("#map-canvas"); 
         this.mapCtx = this.mapCanvas.getContext("2d"); 
         this.tooltip = $('#tooltip'); 
