@@ -1,1 +1,45 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Eternal Immortal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    
+    <!-- NEW: Add the character creation screen here -->
+    <div id="character-creation-screen" class="fullscreen-overlay" style="display: none;">
+        <div class="menu-box">
+            <h1>Create Your Hero</h1>
+            <input type="text" id="char-name-input" placeholder="Enter Name" maxlength="12">
+            <div class="race-selection">
+                <div class="race-option" data-race="Human">
+                    <h3><i class="fas fa-user"></i> Human</h3>
+                    <p>No mana. No natural health regen.</p>
+                </div>
+                <div class="race-option" data-race="Elf">
+                    <h3><i class="fas fa-leaf"></i> Elf</h3>
+                    <p>Has mana. Regenerates health.</p>
+                </div>
+            </div>
+            <button id="start-game-button" class="menu-button">Start Adventure</button>
+        </div>
+    </div>
+
+    <!-- ALL your game UI divs (#game-container, #hud, etc.) go here -->
+    <div id="game-container" style="display: none;">
+        <!-- ... all the canvas, hud, unit frames, windows, etc. ... -->
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <!-- Our main game script -->
+    <script type="module" src="game.js"></script>
+</body>
+</html>
