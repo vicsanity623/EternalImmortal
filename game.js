@@ -1,13 +1,19 @@
-<script type="module">
+import { saveGameToCloud } from './database.js';
+
+// --- Global Setup ---
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => document.querySelectorAll(selector);
 const distance = (a, b) => Math.sqrt((a.x - b.x)**2 + (a.y - b.y)**2);
+
+const currentUser = JSON.parse(sessionStorage.getItem('user'));
+if (!currentUser) {
+    window.location.href = 'index.html';
+}
 
 const WORLD_SIZE = 100000;
 const STARTING_ZONE_CENTER = { x: 50000, y: 50000 };
 const RESPAWN_POINT = { x: 50000, y: 50000 };
 const GRAVEYARD_POINT = { x: 48500, y: 48000 };
-
 const GameData = {
     SCENERY: {
         1: { id: 1, name: 'Tall Pine', icon: '\uf1bb', size: 90, color: '#2E7D32' },
@@ -26,7 +32,6 @@ const GameData = {
         }
     },
     ITEMS: {
-        // (Existing items 1-27, 101-102, 301-303 remain the same)
         1: { id: 1, name: "Rusty Sword", icon: 'fa-gavel', slot: "main-hand", quality: "common", weaponDamage: { min: 3, max: 5 }, durability: 100, maxDurability: 100, sellPrice: 100 },
         2: { id: 2, name: "Worn Leather Vest", icon: "fa-vest-patches", slot: "chest", quality: "common", stats: { armor: 5 }, durability: 100, maxDurability: 100, sellPrice: 150 },
         3: { id: 3, name: "Spider Silk", icon: "fa-network-wired", slot: "material", quality: "common", stackable: true, sellPrice: 50 },
@@ -54,14 +59,10 @@ const GameData = {
         25: { id: 25, name: "Heavy Copper Armor", icon: "fa-shirt", slot: "chest", quality: "magic", stats: { armor: 12, stamina: 2 }, durability: 100, maxDurability: 100, sellPrice: 800 },
         26: { id: 26, name: "Potion of Swiftness", icon: "fa-flask-vial", slot: "consumable", quality: "magic", stackable: true, onUse: (player) => { player.addBuff({ id: 'swiftness', name: 'Swiftness', icon: 'fa-person-running', duration: 30000, onApply: p => p.speed *= 1.3, onExpire: p => p.speed /= 1.3, isDebuff: false }); }, sellPrice: 250 },
         27: { id: 27, name: "Pickaxe", icon: "fa-person-digging", slot: "tool", quality: "common", stackable: false, sellPrice: 100 },
-        
-        // --- NEW BOSS LOOT ---
         28: { id: 28, name: "Grolnok's Cleaver", icon: "fa-axe-battle", slot: "main-hand", quality: "epic",
             weaponDamage: { min: 18, max: 25 }, stats: { strength: 5, critChance: 2 },
             description: "The brutal weapon of the Goblin Overlord."
         },
-        
-        // --- NEW STARTER ITEM ---
         29: { id: 29, name: "Chair", icon: "fa-chair", slot: "material", quality: "common", stackable: true, sellPrice: 75, description: "A simple, but sturdy chair. Good for sitting, or selling." },
         30: { id: 30, name: "Simple Wooden Bow", icon: "fa-crosshairs", slot: "main-hand", quality: "common", 
             weaponDamage: { min: 7, max: 9 }, range: 1500,
@@ -74,7 +75,6 @@ const GameData = {
         32: { id: 32, name: "Goblin Whelp Egg", icon: "fa-egg", slot: "consumable", quality: "epic",
               description: "A strange, surprisingly warm egg. Use: Teaches you how to summon a Goblin Whelp companion. Can also be fed to a max-level Goblin Whelp to unlock its potential.",
               onUse: (player) => { player.addPet('goblin_whelp'); },
-              // --- NEW: Add this property ---
               petId: 'goblin_whelp'
         },
         33: { id: 33, name: "Broodmother's Fang", icon: "fa-tooth", slot: "main-hand", quality: "rare",
@@ -85,7 +85,6 @@ const GameData = {
               stats: { armor: 10, agility: 2 },
               description: "Sturdy leg armor crafted from spider chitin."
         },
-
         301: { id: 301, name: "Stormwind Tabard", icon: "fa-shirt", slot: "tabard", quality: "rare", description: "A symbol of your dedication to Stormwind. Increases reputation gain with the Stormwind Guard by 10%.", requiredFaction: { name: 'Stormwind Guard', tier: 'Friendly' } },
         302: { id: 302, name: "Guard's Heavy Blade", icon: "fa-gavel", slot: "main-hand", quality: "rare", weaponDamage: { min: 10, max: 15 }, stats: { strength: 3, stamina: 3 }, requiredFaction: { name: 'Stormwind Guard', tier: 'Honored' } },
         303: { id: 303, name: "Commander's Greathelm", icon: "fa-user-shield", slot: "head", quality: "epic", stats: { armor: 15, stamina: 5, strength: 5 }, requiredFaction: { name: 'Stormwind Guard', tier: 'Exalted' } },
@@ -548,45 +547,158 @@ const GameData = {
 
 let game;
 
+// --- Game Class (with new/updated methods) ---
 class Game {
     constructor(playerOptions) {
         this.canvas = $("#game-canvas"); this.ctx = this.canvas.getContext("2d");
         this.lastTime = 0; this.entities = []; this.isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         this.init(playerOptions);
     }
+
     init(playerOptions) {
         this.resizeCanvas(); window.addEventListener('resize', () => this.resizeCanvas());
         this.input = new InputHandler(this.isMobile);
         this.world = new World(this.ctx, WORLD_SIZE, WORLD_SIZE);
         ParticleSystem.init(this.ctx);
         
-        if (playerOptions) { 
+        if (playerOptions) {
             this.player = new Player(RESPAWN_POINT.x, RESPAWN_POINT.y, this.input, playerOptions.name, playerOptions.race);
             this.player.autoSlotAbilities();
-            this.player.addItem(32, 2); // Goblin Whelp Egg for testing 
-        } else { 
-            this.player = new Player(RESPAWN_POINT.x, RESPAWN_POINT.y, this.input, 'Hero', 'Human'); 
+            this.spawnEntities();
+        } else {
+            this.player = new Player(RESPAWN_POINT.x, RESPAWN_POINT.y, this.input, 'Loading...', 'Human');
+            if (!this.loadGame()) {
+                console.error("Cloud load failed unexpectedly.");
+            }
         }
 
         this.ui = new UI(this);
         this.camera = new Camera(this.player, this.canvas.width, this.canvas.height);
         
-        if (!playerOptions && !this.loadGame()) {
-            console.error("Failed to load game, but no new character options were provided.");
-            showMainMenu(); 
-            return;
-        } else if (playerOptions) {
-            this.spawnEntities(); 
-        }
-
         this.ui.updateAll(this.player);
         this.setupUIInteractions(); 
         this.initAtmosphere();
         setInterval(() => this.saveGame(true), 30000);
         this.gameLoop(0);
     }
+    saveGame(isAutoSave = false) {
+        if (!this.player || this.player.isDead || this.player.isGhost || !currentUser) return;
+        
+        const saveData = {
+            player: {
+                x: this.player.x, y: this.player.y,
+                name: this.player.name, race: this.player.race,
+                level: this.player.level, xp: this.player.xp,
+                restedXp: this.player.restedXp, gold: this.player.gold,
+                baseStats: { ...this.player.baseStats },
+                stats: { health: this.player.stats.health, mana: this.player.stats.mana },
+                isResting: this.player.isResting,
+                lastSaveTimestamp: Date.now(),
+                inventory: this.player.inventory.map(item => item ? { id: item.id, quantity: item.quantity, durability: item.durability } : null),
+                equipment: Object.entries(this.player.equipment).reduce((acc, [slot, item]) => {
+                    if (!item) {
+                        acc[slot] = null;
+                    } else {
+                        acc[slot] = { id: item.id, durability: item.durability, quantity: item.quantity };
+                    }
+                    return acc;
+                }, {}),
+                hotbar: this.player.hotbar.map(slot => { if (!slot) return null; if (slot.type === 'ability') { return { type: 'ability', id: slot.ref.id }; } if (slot.type === 'item') { const invIndex = this.player.inventory.indexOf(slot.ref); return invIndex > -1 ? { type: 'item', invIndex: invIndex } : null; } return null; }),
+                quests: this.player.quests.map(q => ({ id: q.id, progress: q.progress.map(p => p.current) })),
+                recipes: this.player.recipes.map(r => r.id),
+                spellbook: this.player.spellbook.map(a => a.id),
+                talents: { ...this.player.talents },
+                talentPoints: this.player.talentPoints,
+                reputation: { ...this.player.reputation },
+                professions: { ...this.player.professions },
+                questCooldowns: Object.entries(this.player.questCooldowns).reduce((acc, [id, timeLeft]) => { acc[id] = Date.now() + timeLeft; return acc; }, {}),
+                storage: this.player.storage.map(item => item ? { id: item.id, quantity: item.quantity, durability: item.durability } : null),
+                hasHouse: this.player.hasHouse,
+                pets: this.player.pets,
+                activePetId: this.player.activePetId
+            }
+        };
+
+        saveGameToCloud(currentUser.uid, saveData);
+        
+        if (!isAutoSave) this.createFloatingText("Game Saved!", this.player.x, this.player.y, 'gold');
+    }
+
+    loadGame() {
+        const savedJSON = sessionStorage.getItem('saveData');
+        if (!savedJSON || savedJSON === 'null') {
+             console.log("No save data found, cannot load game.");
+             return false;
+        }
+
+        try {
+            const saveData = JSON.parse(savedJSON);
+            const pData = saveData.player;
+
+            this.spawnEntities();
+            
+            this.player.name = pData.name; this.player.race = pData.race; this.player.x = pData.x; this.player.y = pData.y; this.player.level = pData.level; this.player.xp = pData.xp; this.player.restedXp = pData.restedXp; this.player.gold = pData.gold; this.player.baseStats = { ...pData.baseStats }; this.player.talents = { ...pData.talents }; this.player.talentPoints = pData.talentPoints; this.player.reputation = { ...pData.reputation }; this.player.professions = { ...pData.professions }; this.player.pets = pData.pets || {}; this.player.activePetId = pData.activePetId || null; this.player.nextLevelXp = GameData.XP_TABLE[this.player.level] || 99999; 
+            this.player.hasHouse = pData.hasHouse || false;
+            this.player.storage = (pData.storage || new Array(99).fill(null)).map(itemData => {
+                 if (!itemData) return null;
+                 const baseItem = { ...GameData.ITEMS[itemData.id] };
+                 baseItem.quantity = itemData.quantity;
+                 if (itemData.durability !== undefined) baseItem.durability = itemData.durability;
+                 return baseItem;
+            });
+            this.player.inventory = pData.inventory.map(itemData => { if (!itemData) return null; const baseItem = { ...GameData.ITEMS[itemData.id] }; baseItem.quantity = itemData.quantity; if (itemData.durability !== undefined) baseItem.durability = itemData.durability; return baseItem; });
+            this.player.equipment = {};
+            for (const slot in pData.equipment) {
+                const itemData = pData.equipment[slot];
+                if (itemData) {
+                    const baseItem = { ...GameData.ITEMS[itemData.id] };
+                    if (itemData.durability !== undefined) baseItem.durability = itemData.durability;
+                    if (itemData.quantity !== undefined) baseItem.quantity = itemData.quantity;
+                    this.player.equipment[slot] = baseItem;
+                } else {
+                    this.player.equipment[slot] = null;
+                }
+            }
+            this.player.quests = []; pData.quests.forEach(qData => { const questTemplate = GameData.QUESTS[qData.id]; const questGiver = this.entities.find(e => e instanceof QuestGiver && e.questIds.includes(qData.id)); if (questTemplate && questGiver) { this.player.quests.push({ ...questTemplate, progress: questTemplate.objectives.map((o, i) => ({ ...o, current: qData.progress[i] || 0 })), giver: questGiver }); } }); if (pData.spellbook) {
+                this.player.spellbook = pData.spellbook.map(id => GameData.ABILITIES[id]);
+            }
+            this.player.recipes = pData.recipes.map(id => GameData.CRAFTING_RECIPES[id]);
+            this.player.hotbar = pData.hotbar.map(slotData => { if (!slotData) return null; if (slotData.type === 'ability') { return { type: 'ability', ref: GameData.ABILITIES[slotData.id] }; } if (slotData.type === 'item' && slotData.invIndex !== undefined) { const item = this.player.inventory[slotData.invIndex]; return item ? { type: 'item', ref: item } : null; } return null; });
+            this.player.questCooldowns = {}; for(const id in pData.questCooldowns) { const endTime = pData.questCooldowns[id]; const timeLeft = endTime - Date.now(); if (timeLeft > 0) this.player.questCooldowns[id] = timeLeft; }
+            
+            if (pData.lastSaveTimestamp && pData.isResting) {
+                const offlineSeconds = (Date.now() - pData.lastSaveTimestamp) / 1000;
+                const restedGained = offlineSeconds * 0.5;
+                if (restedGained > 0) {
+                    this.player.restedXp += restedGained;
+                    const maxRested = this.player.nextLevelXp * 1.5;
+                    this.player.restedXp = Math.min(this.player.restedXp, maxRested);
+                    console.log(`Awarded ${Math.round(restedGained)} Rested XP for being offline.`);
+                }
+            }
+
+            this.player.recalculateStats();
+            if (this.player.activePetId) {
+                const petIdToActivate = this.player.activePetId;
+                this.player.activePetId = null;
+                const newPet = this.player.setActivePet(petIdToActivate);
+                if (newPet) {
+                    this.entities.push(newPet);
+                }
+            }
+            this.player.stats.health = pData.stats.health;
+            this.player.stats.mana = pData.stats.mana;
+            this.ui.setupActionbar(this.player);
+            this.ui.updateAll(this.player);
+     
+            console.log("Game loaded from cloud successfully!");
+            return true;
+        } catch (e) {
+            console.error("Failed to load save data. It might be corrupted.", e);
+            return false;
+        }
+    }
     resizeCanvas() { this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight; if(this.camera) { this.camera.width = this.canvas.width; this.camera.height = this.canvas.height; } }
-    
     spawnEntities() {
         this.entities = [];
 
@@ -840,102 +952,6 @@ class Game {
                 this.ui.tooltip.style.display = 'none';
             }
         });
-    }
-
-    saveGame(isAutoSave = false) {
-        if (!this.player || this.player.isDead || this.player.isGhost) return;
-        const saveData = {
-            player: {
-                x: this.player.x, y: this.player.y,
-                name: this.player.name, race: this.player.race,
-                level: this.player.level, xp: this.player.xp,
-                restedXp: this.player.restedXp, gold: this.player.gold,
-                baseStats: { ...this.player.baseStats },
-                stats: { health: this.player.stats.health, mana: this.player.stats.mana },
-                inventory: this.player.inventory.map(item => item ? { id: item.id, quantity: item.quantity, durability: item.durability } : null),
-                equipment: Object.entries(this.player.equipment).reduce((acc, [slot, item]) => {
-                    if (!item) {
-                        acc[slot] = null;
-                    } else {
-                        acc[slot] = { id: item.id, durability: item.durability };
-                        // --- FIX: Also save quantity if the item is stackable ---
-                        if (item.stackable) {
-                            acc[slot].quantity = item.quantity;
-                        }
-                    }
-                    return acc;
-                }, {}),
-                hotbar: this.player.hotbar.map(slot => { if (!slot) return null; if (slot.type === 'ability') { return { type: 'ability', id: slot.ref.id }; } if (slot.type === 'item') { const invIndex = this.player.inventory.indexOf(slot.ref); return invIndex > -1 ? { type: 'item', invIndex: invIndex } : null; } return null; }),
-                quests: this.player.quests.map(q => ({ id: q.id, progress: q.progress.map(p => p.current) })),
-                recipes: this.player.recipes.map(r => r.id),
-                spellbook: this.player.spellbook.map(a => a.id),
-                talents: { ...this.player.talents },
-                talentPoints: this.player.talentPoints,
-                reputation: { ...this.player.reputation },
-                professions: { ...this.player.professions },
-                questCooldowns: Object.entries(this.player.questCooldowns).reduce((acc, [id, timeLeft]) => { acc[id] = Date.now() + timeLeft; return acc; }, {}),
-                storage: this.player.storage.map(item => item ? { id: item.id, quantity: item.quantity, durability: item.durability } : null),
-                hasHouse: this.player.hasHouse,
-                pets: this.player.pets,
-                activePetId: this.player.activePetId
-            }
-        };
-        localStorage.setItem('miniWowSaveData', JSON.stringify(saveData));
-        if (!isAutoSave) this.createFloatingText("Game Saved!", this.player.x, this.player.y, 'gold');
-    }
-
-    loadGame() {
-        const savedJSON = localStorage.getItem('miniWowSaveData');
-        if (!savedJSON) { console.log("No save data found."); return false; }
-        try {
-            const saveData = JSON.parse(savedJSON); const pData = saveData.player;
-            this.spawnEntities();
-            
-            this.player.name = pData.name; this.player.race = pData.race; this.player.x = pData.x; this.player.y = pData.y; this.player.level = pData.level; this.player.xp = pData.xp; this.player.restedXp = pData.restedXp; this.player.gold = pData.gold; this.player.baseStats = { ...pData.baseStats }; this.player.talents = { ...pData.talents }; this.player.talentPoints = pData.talentPoints; this.player.reputation = { ...pData.reputation }; this.player.professions = { ...pData.professions }; this.player.pets = pData.pets || {}; this.player.activePetId = pData.activePetId || null; this.player.nextLevelXp = GameData.XP_TABLE[this.player.level] || 99999; 
-            this.player.hasHouse = pData.hasHouse || false;
-            this.player.storage = (pData.storage || new Array(99).fill(null)).map(itemData => {
-                 if (!itemData) return null;
-                 const baseItem = { ...GameData.ITEMS[itemData.id] };
-                 baseItem.quantity = itemData.quantity;
-                 if (itemData.durability !== undefined) baseItem.durability = itemData.durability;
-                 return baseItem;
-            });
-            this.player.inventory = pData.inventory.map(itemData => { if (!itemData) return null; const baseItem = { ...GameData.ITEMS[itemData.id] }; baseItem.quantity = itemData.quantity; if (itemData.durability !== undefined) baseItem.durability = itemData.durability; return baseItem; });
-            this.player.equipment = {};
-            for (const slot in pData.equipment) {
-                const itemData = pData.equipment[slot];
-                if (itemData) {
-                    const baseItem = { ...GameData.ITEMS[itemData.id] };
-                    // --- FIX: Apply durability AND quantity from save data ---
-                    if (itemData.durability !== undefined) baseItem.durability = itemData.durability;
-                    if (itemData.quantity !== undefined) baseItem.quantity = itemData.quantity;
-                    this.player.equipment[slot] = baseItem;
-                } else {
-                    this.player.equipment[slot] = null;
-                }
-            }
-            this.player.quests = []; pData.quests.forEach(qData => { const questTemplate = GameData.QUESTS[qData.id]; const questGiver = this.entities.find(e => e instanceof QuestGiver && e.questIds.includes(qData.id)); if (questTemplate && questGiver) { this.player.quests.push({ ...questTemplate, progress: questTemplate.objectives.map((o, i) => ({ ...o, current: qData.progress[i] || 0 })), giver: questGiver }); } }); if (pData.spellbook) {
-                this.player.spellbook = pData.spellbook.map(id => GameData.ABILITIES[id]);
-            }
-            
-            this.player.recipes = pData.recipes.map(id => GameData.CRAFTING_RECIPES[id]);
-            this.player.hotbar = pData.hotbar.map(slotData => { if (!slotData) return null; if (slotData.type === 'ability') { return { type: 'ability', ref: GameData.ABILITIES[slotData.id] }; } if (slotData.type === 'item' && slotData.invIndex !== undefined) { const item = this.player.inventory[slotData.invIndex]; return item ? { type: 'item', ref: item } : null; } return null; });
-            this.player.questCooldowns = {}; for(const id in pData.questCooldowns) { const endTime = pData.questCooldowns[id]; const timeLeft = endTime - Date.now(); if (timeLeft > 0) this.player.questCooldowns[id] = timeLeft; }
-            
-            this.player.recalculateStats();
-            if (this.player.activePetId) {
-                const petIdToActivate = this.player.activePetId;
-                this.player.activePetId = null;
-                const newPet = this.player.setActivePet(petIdToActivate);
-                if (newPet) {
-                    this.entities.push(newPet); // Add the pet to the entity list safely
-                }
-            }
-            this.player.stats.health = pData.stats.health;
-            this.player.stats.mana = pData.stats.mana;
-            this.ui.setupActionbar(this.player);
-            console.log("Game loaded successfully!"); return true;
-        } catch (e) { console.error("Failed to load save data. It might be corrupted.", e); localStorage.removeItem('miniWowSaveData'); return false; }
     }
 }
 
@@ -3269,36 +3285,38 @@ class UI {
             }
         });
     }
-    createFloatingText(text, worldX, worldY, color, camera, type = '') {
+    // This method is inside your UI class
+    createFloatingText(text, worldX, worldY, color, type = '') {
+        // --- FIX: Get the camera from the game instance, not as a parameter ---
+        const camera = this.game.camera;
+        if (!camera) return; // Safety check
+    
         const textElement = document.createElement('div');
         textElement.className = `floating-text ${type}`;
         textElement.textContent = text;
         textElement.style.color = color;
         
-        // --- NEW DYNAMIC STACKING LOGIC ---
         let finalY = worldY - camera.y;
         const screenX = worldX - camera.x;
         const allFloatingTexts = $$('#floating-text-container .floating-text');
-        const verticalSpacing = 20; // How many pixels to move up to avoid overlap
-
+        const verticalSpacing = 20;
+    
         let isOverlapping;
         do {
             isOverlapping = false;
             for (const existingText of allFloatingTexts) {
                 const existingY = existingText.offsetTop;
-                // Check if our new text's Y position is too close to an existing one
                 if (Math.abs(finalY - existingY) < verticalSpacing) {
-                    finalY -= verticalSpacing; // Move our text up
+                    finalY -= verticalSpacing;
                     isOverlapping = true;
-                    break; // Restart the check with the new Y position
+                    break;
                 }
             }
         } while (isOverlapping);
-        // --- END OF NEW LOGIC ---
-
+    
         textElement.style.left = `${screenX}px`;
-        textElement.style.top = `${finalY}px`; // Use the final, non-overlapping Y position
-
+        textElement.style.top = `${finalY}px`;
+    
         $('#floating-text-container').appendChild(textElement);
         setTimeout(() => textElement.remove(), 1500);
     }
@@ -3758,54 +3776,52 @@ class UI {
     }
 }
 
-function showMainMenu() {
-    $('#main-menu').style.display = 'flex';
-    $('#character-creation-screen').style.display = 'none';
-    $('#game-container').style.display = 'none';
-    
-    const hasSave = localStorage.getItem('miniWowSaveData');
-    $('#continue-button').disabled = !hasSave;
-}
+// --- DELETE the old showMainMenu and initGame functions ---
 
-function initGame(playerOptions = null) {
-    $('#main-menu').style.display = 'none';
-    $('#character-creation-screen').style.display = 'none';
-    $('#game-container').style.display = 'block';
-    
-    game = new Game(playerOptions);
-    window.game = game;
-}
-
+// --- NEW Startup Logic ---
 document.addEventListener('DOMContentLoaded', () => {
-    showMainMenu();
 
-    $('#continue-button').addEventListener('click', () => {
-        initGame();
-    });
-
-    $('#new-char-button').addEventListener('click', () => {
-        $('#main-menu').style.display = 'none';
-        $('#character-creation-screen').style.display = 'flex';
-    });
+    const firebaseConfig = {
+        apiKey: "AIzaSyBSrk6DzJEb9u9fSpjA3r2WnZgEbzPpH44",
+        authDomain: "eternal-immortal-rpg.firebaseapp.com",
+        projectId: "eternal-immortal-rpg",
+        storageBucket: "eternal-immortal-rpg.firebasestorage.app",
+        messagingSenderId: "313509729333",
+        appId: "1:313509729333:web:1eb4c4d0a5941fbfca4d7c",
+        measurementId: "G-WLTHERPVEZ"
+      };
+    firebase.initializeApp(firebaseConfig);
     
-    let selectedRace = null;
-    $$('.race-option').forEach(el => {
-        el.addEventListener('click', () => {
-            $$('.race-option').forEach(opt => opt.classList.remove('selected'));
-            el.classList.add('selected');
-            selectedRace = el.dataset.race;
+    const savedDataJSON = sessionStorage.getItem('saveData');
+    
+    if (savedDataJSON && savedDataJSON !== 'null') {
+        // Found save data for a returning player
+        $('#game-container').style.display = 'block';
+        game = new Game(); // Constructor calls loadGame()
+        window.game = game;
+    } else {
+        // No save data, this is a new player. Show character creation.
+        $('#character-creation-screen').style.display = 'flex';
+        let selectedRace = 'Human'; // Default to Human
+        
+        $$('.race-option').forEach(el => {
+            el.addEventListener('click', () => {
+                $$('.race-option').forEach(opt => opt.classList.remove('selected'));
+                el.classList.add('selected');
+                selectedRace = el.dataset.race;
+            });
         });
-    });
 
-    $('#start-game-button').addEventListener('click', () => {
-        const name = $('#char-name-input').value.trim();
-        if (!name) { alert("Please enter a name for your hero."); return; }
-        if (!selectedRace) { alert("Please select a race."); return; }
-        
-        localStorage.removeItem('miniWowSaveData');
-        
-        initGame({ name, race: selectedRace });
-    });
+        $('#start-game-button').addEventListener('click', () => {
+            const name = $('#char-name-input').value.trim() || currentUser.displayName.split(' ')[0];
+            if (!name) { alert("Please enter a name for your hero."); return; }
+            
+            $('#character-creation-screen').style.display = 'none';
+            $('#game-container').style.display = 'block';
+            
+            // Start the game with the new character options
+            game = new Game({ name, race: selectedRace });
+            window.game = game;
+        });
+    }
 });
-
-</script>
