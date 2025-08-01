@@ -1,27 +1,24 @@
-import { saveGameToCloud, loadGameFromCloud } from './database.js';
+import { loadGameFromCloud } from './database.js';
 
-// --- IMPORTANT ---
-// PASTE YOUR FIREBASE CONFIG SNIPPET HERE
+
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY", // Replace with your actual key
-  authDomain: "eternal-immortal-rpg.firebaseapp.com",
-  projectId: "eternal-immortal-rpg",
-  storageBucket: "eternal-immortal-rpg.appspot.com",
-  messagingSenderId: "313509729333",
-  appId: "1:313509729333:web:b692ab77bed51377ca4d7c",
-  measurementId: "G-CKTX3Q77N6"
-};
+    apiKey: "AIzaSyBSrk6DzJEb9u9fSpjA3r2WnZgEbzPpH44",
+    authDomain: "eternal-immortal-rpg.firebaseapp.com",
+    projectId: "eternal-immortal-rpg",
+    storageBucket: "eternal-immortal-rpg.firebasestorage.app",
+    messagingSenderId: "313509729333",
+    appId: "1:313509729333:web:1eb4c4d0a5941fbfca4d7c",
+    measurementId: "G-WLTHERPVEZ"
+  };
+// ---------------------------------------------------------
 
-// Initialize Firebase (this works globally with the compat scripts)
+// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
-
-// Get the Auth service using the v8 syntax
 const auth = firebase.auth();
 const provider = new firebase.auth.GoogleAuthProvider();
 
 const googleLoginBtn = document.getElementById('google-login-btn');
 
-// Handle Google Login Click
 googleLoginBtn.addEventListener('click', () => {
     auth.signInWithPopup(provider)
         .catch((error) => {
@@ -30,26 +27,27 @@ googleLoginBtn.addEventListener('click', () => {
         });
 });
 
-// The "Brain" of our app: Listens for login/logout changes
+// This function runs whenever a user signs in or out
 auth.onAuthStateChanged(async (user) => {
     if (user) {
-        // User is signed in. Let's load their data and go to the game.
+        // User is signed in.
         console.log("User signed in:", user.displayName);
         googleLoginBtn.textContent = 'Loading Game...';
         googleLoginBtn.disabled = true;
 
+        // Try to load their save data from the cloud
         const saveData = await loadGameFromCloud(user.uid);
         
-        // Use sessionStorage to pass data to the game page
+        // Store user info and save data in the browser's session storage
+        // This is how we pass the data to the next page (game.html)
         sessionStorage.setItem('user', JSON.stringify({ uid: user.uid, displayName: user.displayName }));
         sessionStorage.setItem('saveData', saveData ? JSON.stringify(saveData) : null);
         
-        // Redirect to the game page
+        // Go to the game page
         window.location.href = 'game.html';
 
     } else {
-        // User is signed out. Make sure we are on the login page.
+        // User is signed out.
         console.log("No user signed in.");
-        // This logic is fine, no changes needed here.
     }
 });
