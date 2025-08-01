@@ -585,6 +585,19 @@ class Game {
     saveGame(isAutoSave = false) {
         if (!this.player || this.player.isDead || this.player.isGhost || !currentUser) return;
         
+        // This is a helper function to safely create an item object for saving.
+        const createSafeItemObject = (item) => {
+            if (!item) return null;
+            const safeItem = { id: item.id };
+            if (item.quantity !== undefined) {
+                safeItem.quantity = item.quantity;
+            }
+            if (item.durability !== undefined) {
+                safeItem.durability = item.durability;
+            }
+            return safeItem;
+        };
+
         const saveData = {
             player: {
                 x: this.player.x, y: this.player.y,
@@ -595,25 +608,25 @@ class Game {
                 stats: { health: this.player.stats.health, mana: this.player.stats.mana },
                 isResting: this.player.isResting,
                 lastSaveTimestamp: Date.now(),
-                inventory: this.player.inventory.map(item => item ? { id: item.id, quantity: item.quantity, durability: item.durability } : null),
                 
-                // --- THIS IS THE CORRECTED LOGIC ---
+                // --- THE FINAL FIX IS HERE ---
+                inventory: this.player.inventory.map(createSafeItemObject),
                 equipment: Object.entries(this.player.equipment).reduce((acc, [slot, item]) => {
-                    if (!item) {
-                        acc[slot] = null;
-                    } else {
-                        const itemToSave = { id: item.id, durability: item.durability };
-                        // Only add quantity if the item is stackable
-                        if (item.stackable) {
-                            itemToSave.quantity = item.quantity;
-                        }
-                        acc[slot] = itemToSave;
-                    }
+                    acc[slot] = createSafeItemObject(item);
                     return acc;
                 }, {}),
-                // --- END OF CORRECTED LOGIC ---
+                storage: this.player.storage.map(createSafeItemObject),
+                // --- END OF FINAL FIX ---
 
-                hotbar: this.player.hotbar.map(slot => { if (!slot) return null; if (slot.type === 'ability') { return { type: 'ability', id: slot.ref.id }; } if (slot.type === 'item') { const invIndex = this.player.inventory.indexOf(slot.ref); return invIndex > -1 ? { type: 'item', invIndex: invIndex } : null; } return null; }),
+                hotbar: this.player.hotbar.map(slot => { 
+                    if (!slot) return null; 
+                    if (slot.type === 'ability') { return { type: 'ability', id: slot.ref.id }; } 
+                    if (slot.type === 'item') { 
+                        const invIndex = this.player.inventory.indexOf(slot.ref); 
+                        return invIndex > -1 ? { type: 'item', invIndex: invIndex } : null; 
+                    } 
+                    return null; 
+                }),
                 quests: this.player.quests.map(q => ({ id: q.id, progress: q.progress.map(p => p.current) })),
                 recipes: this.player.recipes.map(r => r.id),
                 spellbook: this.player.spellbook.map(a => a.id),
@@ -621,8 +634,9 @@ class Game {
                 talentPoints: this.player.talentPoints,
                 reputation: { ...this.player.reputation },
                 professions: { ...this.player.professions },
-                questCooldowns: Object.entries(this.player.questCooldowns).reduce((acc, [id, timeLeft]) => { acc[id] = Date.now() + timeLeft; return acc; }, {}),
-                storage: this.player.storage.map(item => item ? { id: item.id, quantity: item.quantity, durability: item.durability } : null),
+                questCooldowns: Object.entries(this.player.questCooldowns).reduce((acc, [id, timeLeft]) => { 
+                    acc[id] = Date.now() + timeLeft; return acc; 
+                }, {}),
                 hasHouse: this.player.hasHouse,
                 pets: this.player.pets,
                 activePetId: this.player.activePetId
@@ -631,7 +645,9 @@ class Game {
 
         saveGameToCloud(currentUser.uid, saveData);
         
-        if (!isAutoSave) this.createFloatingText("Game Saved!", this.player.x, this.player.y, 'gold');
+        if (!isAutoSave) {
+            this.createFloatingText("Game Saved!", this.player.x, this.player.y, 'gold');
+        }
     }
 
     loadGame() {
