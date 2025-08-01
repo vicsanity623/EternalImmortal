@@ -137,11 +137,20 @@
         .unit-info { flex-grow: 1; }
         .name-level { display: flex; justify-content: space-between; margin-bottom: 5px; }
         .resource-bar { width: 100%; height: 15px; background-color: var(--color-bg-dark); border-radius: 3px; overflow: hidden; margin-top: 2px; position: relative; }
-        .resource-bar .bar-fill { height: 100%; transition: width 0.2s ease-out; }
+        .resource-bar .bar-fill {
+            height: 100%;
+            transition: width 0.2s ease-out;
+        }
         .resource-bar .bar-text { position: absolute; width: 100%; text-align: center; font-size: 10px; line-height: 15px; color: white; text-shadow: 1px 1px 1px black; }
-        #player-health-fill { background-color: var(--color-health); }
-        #player-mana-fill { background-color: var(--color-mana); }
-        #target-health-fill { background-color: var(--color-enemy-health); }
+        #player-health-fill {
+            background-color: var(--color-health);
+        }
+        #player-mana-fill {
+            background-color: var(--color-mana);
+        }
+        #target-health-fill {
+            background-color: var(--color-enemy-health);
+        }
 
         .buff-container { display: flex; gap: 3px; margin-top: 4px; height: 24px; }
         .buff-icon { width: 22px; height: 22px; background-color: var(--color-bg-dark); border: 1px solid var(--color-border); display: flex; justify-content: center; align-items: center; font-size: 14px; position: relative; }
@@ -162,12 +171,36 @@
         .cooldown-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 0; background-color: var(--color-cooldown); pointer-events: none; display: flex; justify-content: center; align-items: center; font-size: 18px; color: white; overflow: hidden; }
 
         #xp-bar { position: relative; bottom: 0; left: 0; transform: none; width: 80vw; max-width: 544px; height: 8px; background-color: rgba(0,0,0,0.5); border: 1px solid var(--color-border); pointer-events: none; display: flex; }
-        #xp-bar-fill { width: 0%; height: 100%; background-color: var(--color-xp); transition: width 0.5s ease-in-out; }
-        #xp-bar-rested-fill { width: 0%; height: 100%; background-color: var(--color-xp-rested); transition: width 0.5s ease-in-out; }
+        #xp-bar-fill {
+            height: 100%;
+            background-color: var(--color-xp);
+            transition: width 0.5s ease-in-out;
+            position: relative; /* Add this */
+            z-index: 2; /* Add this */
+        }
+        #xp-bar-rested-fill {
+            height: 100%;
+            background-color: var(--color-xp-rested);
+            transition: width 0.5s ease-in-out;
+            position: absolute; /* Add this */
+            top: 0; /* Add this */
+            z-index: 1; /* Add this */
+        }
 
         #minimap { position: absolute; top: 20px; right: 20px; width: 150px; height: 150px; border-radius: 50%; border: 3px solid var(--color-border); background-color: var(--color-bg-dark); overflow: hidden; pointer-events: all; }
         #minimap-canvas { width: 100%; height: 100%; }
-        .window { position: absolute; width: 350px; background: var(--color-bg-medium); border: 1px solid var(--color-border); border-radius: 5px; box-shadow: 0 0 15px rgba(0,0,0,0.7); display: none; flex-direction: column; pointer-events: all; z-index: 100; }
+        #game-container .window {
+            position: absolute;
+            width: 350px;
+            background-color: var(--color-bg-medium); /* Use background-color */
+            border: 1px solid var(--color-border);
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.7);
+            display: none;
+            flex-direction: column;
+            pointer-events: all;
+            z-index: 100;
+        }
         .window-header { padding: 8px; background: var(--color-bg-light); cursor: move; display: flex; justify-content: space-between; align-items: center; }
         .window-header .close-btn { cursor: pointer; }
         .window-content { padding: 10px; max-height: 400px; overflow-y: auto; }
