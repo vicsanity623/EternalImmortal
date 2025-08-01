@@ -561,19 +561,26 @@ class Game {
         this.input = new InputHandler(this.isMobile);
         this.world = new World(this.ctx, WORLD_SIZE, WORLD_SIZE);
         ParticleSystem.init(this.ctx);
+
+        // --- FIX: Create the UI object HERE, before it's ever needed. ---
+        this.ui = new UI(this);
         
         if (playerOptions) {
+            // This is for a BRAND NEW character
             this.player = new Player(RESPAWN_POINT.x, RESPAWN_POINT.y, this.input, playerOptions.name, playerOptions.race);
             this.player.autoSlotAbilities();
             this.spawnEntities();
         } else {
+            // This is for a character LOADED from the cloud
             this.player = new Player(RESPAWN_POINT.x, RESPAWN_POINT.y, this.input, 'Loading...', 'Human');
             if (!this.loadGame()) {
                 console.error("Cloud load failed unexpectedly.");
+                // As a fallback, spawn a default world if loading fails
+                this.spawnEntities(); 
             }
         }
 
-        this.ui = new UI(this);
+        // Now we can safely create the camera and do final setup
         this.camera = new Camera(this.player, this.canvas.width, this.canvas.height);
         
         this.ui.updateAll(this.player);
