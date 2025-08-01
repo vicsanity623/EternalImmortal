@@ -3792,36 +3792,63 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     firebase.initializeApp(firebaseConfig);
     
-    const savedDataJSON = sessionStorage.getItem('saveData');
-    
-    if (savedDataJSON && savedDataJSON !== 'null') {
-        // Found save data for a returning player
+    const savedDataFromSession = sessionStorage.getItem('saveData');
+    if (savedDataFromSession && savedDataFromSession !== 'null') {
+        // We just logged in. Load the game immediately with the data we brought with us.
+        console.log("Fast path: Loading game with data from session storage.");
         $('#game-container').style.display = 'block';
-        game = new Game(); // Constructor calls loadGame()
+        game = new Game();
         window.game = game;
-    } else {
-        // No save data, this is a new player. Show character creation.
-        $('#character-creation-screen').style.display = 'flex';
-        let selectedRace = 'Human'; // Default to Human
-        
-        $$('.race-option').forEach(el => {
-            el.addEventListener('click', () => {
-                $$('.race-option').forEach(opt => opt.classList.remove('selected'));
-                el.classList.add('selected');
-                selectedRace = el.dataset.race;
-            });
-        });
-
-        $('#start-game-button').addEventListener('click', () => {
-            const name = $('#char-name-input').value.trim() || currentUser.displayName.split(' ')[0];
-            if (!name) { alert("Please enter a name for your hero."); return; }
-            
-            $('#character-creation-screen').style.display = 'none';
-            $('#game-container').style.display = 'block';
-            
-            // Start the game with the new character options
-            game = new Game({ name, race: selectedRace });
-            window.game = game;
-        });
+        return; // Stop here
     }
+
+    // --- 3. If no session data, handle a page reload or direct visit ---
+    console.log("No session data. Checking authentication state...");
+    firebase.auth().onAuthStateChanged(async (user) => {
+        if (user) {
+            // User is logged in. Fetch their data from the cloud.
+            console.log("User is authenticated. Fetching data from cloud...");
+            const cloudSaveData = await loadGameFromCloud(user.uid);
+            
+            // Now, we store this data in sessionStorage so our loadGame() can find it.
+            sessionStorage.setItem('saveData', cloudSaveData ? JSON.stringify(cloudSaveData) : null);
+
+            if (cloudSaveData) {
+                // We found their save file. Load the game.
+                $('#game-container').style.display = 'block';
+                game = new Game();
+                window.game = game;
+            } else {
+                // They are logged in, but have no save file. Show character creation.
+                $('#character-creation-screen').style.display = 'flex';
+                setupCharacterCreation(user);
+            }
+        } else {
+            // Not logged in and no session data. They must go to the login page.
+            window.location.href = 'index.html';
+        }
+    });
 });
+
+// Helper function for character creation logic
+function setupCharacterCreation(user) {
+    let selectedRace = 'Human'; // Default
+    $$('.race-option').forEach(el => {
+        el.addEventListener('click', () => {
+            $$('.race-option').forEach(opt => opt.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedRace = el.dataset.race;
+        });
+    });
+
+    $('#start-game-button').addEventListener('click', () => {
+        const name = $('#char-name-input').value.trim() || user.displayName.split(' ')[0];
+        if (!name) { alert("Please enter a name for your hero."); return; }
+        
+        $('#character-creation-screen').style.display = 'none';
+        $('#game-container').style.display = 'block';
+        
+        game = new Game({ name, race: selectedRace });
+        window.game = game;
+    });
+}
