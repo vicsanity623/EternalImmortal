@@ -1,8 +1,9 @@
-import { saveGameToCloud, loadGameFromCloud } from './database_v3.js';
+import { saveGameToCloud, loadGameFromCloud } from './database_final.js';
 
 // --- Global Setup ---
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => document.querySelectorAll(selector);
+
 const distance = (a, b) => Math.sqrt((a.x - b.x)**2 + (a.y - b.y)**2);
 
 const currentUser = JSON.parse(sessionStorage.getItem('user'));
@@ -3791,57 +3792,47 @@ class UI {
 document.addEventListener('DOMContentLoaded', () => {
 
     const firebaseConfig = {
-        apiKey: "AIzaSyBSrk6DzJEb9u9fSpjA3r2WnZgEbzPpH44",
-        authDomain: "eternal-immortal-rpg.firebaseapp.com",
-        projectId: "eternal-immortal-rpg",
-        storageBucket: "eternal-immortal-rpg.firebasestorage.app",
-        messagingSenderId: "313509729333",
-        appId: "1:313509729333:web:1eb4c4d0a5941fbfca4d7c",
-        measurementId: "G-WLTHERPVEZ"
-      };
+      apiKey: "AIzaSyBSrk6DzJEb9u9fSpjA3r2WnZgEbzPpH44",
+      authDomain: "eternal-immortal-rpg.firebaseapp.com",
+      projectId: "eternal-immortal-rpg",
+      storageBucket: "eternal-immortal-rpg.firebasestorage.app",
+      messagingSenderId: "313509729333",
+      appId: "1:313509729333:web:1eb4c4d0a5941fbfca4d7c",
+      measurementId: "G-WLTHERPVEZ"
+    };
     firebase.initializeApp(firebaseConfig);
-    
+
     const savedDataFromSession = sessionStorage.getItem('saveData');
     if (savedDataFromSession && savedDataFromSession !== 'null') {
-        // We just logged in. Load the game immediately with the data we brought with us.
         console.log("Fast path: Loading game with data from session storage.");
         $('#game-container').style.display = 'block';
         game = new Game();
         window.game = game;
-        return; // Stop here
+        return;
     }
 
-    // --- 3. If no session data, handle a page reload or direct visit ---
     console.log("No session data. Checking authentication state...");
     firebase.auth().onAuthStateChanged(async (user) => {
         if (user) {
-            // User is logged in. Fetch their data from the cloud.
             console.log("User is authenticated. Fetching data from cloud...");
             const cloudSaveData = await loadGameFromCloud(user.uid);
-            
-            // Now, we store this data in sessionStorage so our loadGame() can find it.
             sessionStorage.setItem('saveData', cloudSaveData ? JSON.stringify(cloudSaveData) : null);
-
             if (cloudSaveData) {
-                // We found their save file. Load the game.
                 $('#game-container').style.display = 'block';
                 game = new Game();
                 window.game = game;
             } else {
-                // They are logged in, but have no save file. Show character creation.
                 $('#character-creation-screen').style.display = 'flex';
                 setupCharacterCreation(user);
             }
         } else {
-            // Not logged in and no session data. They must go to the login page.
             window.location.href = 'index.html';
         }
     });
 });
 
-// Helper function for character creation logic
 function setupCharacterCreation(user) {
-    let selectedRace = 'Human'; // Default
+    let selectedRace = 'Human';
     $$('.race-option').forEach(el => {
         el.addEventListener('click', () => {
             $$('.race-option').forEach(opt => opt.classList.remove('selected'));
@@ -3849,14 +3840,11 @@ function setupCharacterCreation(user) {
             selectedRace = el.dataset.race;
         });
     });
-
     $('#start-game-button').addEventListener('click', () => {
         const name = $('#char-name-input').value.trim() || user.displayName.split(' ')[0];
         if (!name) { alert("Please enter a name for your hero."); return; }
-        
         $('#character-creation-screen').style.display = 'none';
         $('#game-container').style.display = 'block';
-        
         game = new Game({ name, race: selectedRace });
         window.game = game;
     });

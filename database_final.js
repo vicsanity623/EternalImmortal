@@ -24,10 +24,13 @@ export async function loadGameFromCloud(userId) {
         }
         const userDocRef = db.collection('users').doc(userId);
         const docSnap = await userDocRef.get();
+        
+        const data = docSnap.data();
 
-        if (docSnap.exists()) { 
+        // THE NEW METHOD: Check if data itself exists.
+        if (data && data.gameData) { 
             console.log("Save data found in cloud!");
-            return docSnap.data().gameData;
+            return data.gameData;
         } else {
             console.log("No save data found for this user. A new game will be created.");
             return null;
