@@ -3099,7 +3099,39 @@ class UI {
     
     updateXPBar(player) { const xpPercent = (player.xp / player.nextLevelXp) * 100; const restedPercent = (player.restedXp / player.nextLevelXp) * 100; $('#xp-bar-fill').style.width = `${xpPercent}%`; $('#xp-bar-rested-fill').style.width = `${Math.min(100 - xpPercent, restedPercent)}%`; $('#xp-bar').title = `XP: ${player.xp} / ${player.nextLevelXp}\nRested: ${Math.floor(player.restedXp)}`; }
     
-    setupActionbar(player) { const bar = $('#action-bar'); bar.innerHTML = ''; for (let i = 0; i < 10; i++) { const slotItem = player.hotbar[i]; const slot = document.createElement('div'); slot.className = 'action-slot'; slot.dataset.index = i; slot.dataset.dropTarget = 'hotbar'; if (slotItem && slotItem.ref) { const ref = slotItem.ref; slot.innerHTML = `<i class="fas ${ref.icon} quality-${ref.quality || 'common'}"></i><div class="action-keybind">${(i+1)%10}</div>`; if(slotItem.type === 'ability') slot.innerHTML += `<div class="cooldown-overlay" data-ability-id="${ref.id}"></div>`; if(slotItem.type === 'item' && ref.quantity > 1) slot.innerHTML += `<div class="hotbar-item-count">${ref.quantity}</div>`; slot.addEventListener('click', () => player.useHotbarSlot(i)); } else { slot.innerHTML = `<div class="action-keybind">${(i+1)%10}</div>`; } bar.appendChild(slot); } if (this.game.isMobile) this.setupMobileActionButtons(player); }
+    setupActionbar(player) {
+        const bar = $('#action-bar');
+        bar.innerHTML = '';
+        for (let i = 0; i < 10; i++) {
+            const slotItem = player.hotbar[i];
+            const slot = document.createElement('div');
+            slot.className = 'action-slot';
+            slot.dataset.index = i;
+            slot.dataset.dropTarget = 'hotbar';
+            
+            // --- REPLACEMENT LOGIC START ---
+            let innerHTML = `<div class="action-keybind">${(i + 1) % 10}</div>`; // Always add keybind first
+
+            if (slotItem && slotItem.ref) {
+                const ref = slotItem.ref;
+                innerHTML += `<i class="fas ${ref.icon} quality-${ref.quality || 'common'}"></i>`;
+
+                if (slotItem.type === 'item' && ref.quantity > 1) {
+                    innerHTML += `<div class="hotbar-item-count">${ref.quantity}</div>`;
+                }
+                if (slotItem.type === 'ability') {
+                    innerHTML += `<div class="cooldown-overlay" data-ability-id="${ref.id}"></div>`;
+                }
+                slot.addEventListener('click', () => player.useHotbarSlot(i));
+            }
+            
+            slot.innerHTML = innerHTML;
+            // --- REPLACEMENT LOGIC END ---
+            
+            bar.appendChild(slot);
+        }
+        if (this.game.isMobile) this.setupMobileActionButtons(player);
+    }
     
     updateCooldowns(player) { $$('.cooldown-overlay').forEach(overlay => { const id = overlay.dataset.abilityId; const hotbarItem = player.hotbar.find(h => h && h.type === 'ability' && h.ref.id == id); if(hotbarItem && player.cooldowns[id]) { const remaining = player.cooldowns[id]; const percentage = (remaining / hotbarItem.ref.cooldown) * 100; overlay.style.height = `${percentage}%`; overlay.textContent = (remaining / 1000).toFixed(1); } else { overlay.style.height = '0%'; overlay.textContent = ''; } }); }
     
