@@ -1,5 +1,4 @@
-
-// This file assumes Firebase has been initialized in auth.js
+// This file assumes Firebase has been initialized in auth.js or game.js
 const db = firebase.firestore();
 
 // Function to save game data to the cloud
@@ -27,7 +26,7 @@ export async function loadGameFromCloud(userId) {
         const userDocRef = db.collection('users').doc(userId);
         const docSnap = await userDocRef.get();
 
-        if (docSnap.exists) {
+        if (docSnap.exists()) {
             console.log("Save data found in cloud!");
             return docSnap.data().gameData;
         } else {
