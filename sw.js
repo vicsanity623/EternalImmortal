@@ -1,4 +1,4 @@
-const CACHE_NAME = 'eternal-immortal-v1.0.3';
+const CACHE_NAME = 'eternal-immortal-v1.0.5';
 
 // List all the files your game needs to run offline.
 const urlsToCache = [
