@@ -595,14 +595,23 @@ class Game {
                 isResting: this.player.isResting,
                 lastSaveTimestamp: Date.now(),
                 inventory: this.player.inventory.map(item => item ? { id: item.id, quantity: item.quantity, durability: item.durability } : null),
+                
+                // --- THIS IS THE CORRECTED LOGIC ---
                 equipment: Object.entries(this.player.equipment).reduce((acc, [slot, item]) => {
                     if (!item) {
                         acc[slot] = null;
                     } else {
-                        acc[slot] = { id: item.id, durability: item.durability, quantity: item.quantity };
+                        const itemToSave = { id: item.id, durability: item.durability };
+                        // Only add quantity if the item is stackable
+                        if (item.stackable) {
+                            itemToSave.quantity = item.quantity;
+                        }
+                        acc[slot] = itemToSave;
                     }
                     return acc;
                 }, {}),
+                // --- END OF CORRECTED LOGIC ---
+
                 hotbar: this.player.hotbar.map(slot => { if (!slot) return null; if (slot.type === 'ability') { return { type: 'ability', id: slot.ref.id }; } if (slot.type === 'item') { const invIndex = this.player.inventory.indexOf(slot.ref); return invIndex > -1 ? { type: 'item', invIndex: invIndex } : null; } return null; }),
                 quests: this.player.quests.map(q => ({ id: q.id, progress: q.progress.map(p => p.current) })),
                 recipes: this.player.recipes.map(r => r.id),
