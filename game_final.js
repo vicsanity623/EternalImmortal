@@ -551,93 +551,93 @@ let game;
 // --- Game Class (with new/updated methods) ---
 class Game {
     constructor(playerOptions) {
-        this.canvas = $("#game-canvas"); this.ctx = this.canvas.getContext("2d");
-        this.lastTime = 0; this.entities = []; this.isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        this.canvas = $("#game-canvas");
+        this.ctx = this.canvas.getContext("2d");
+        this.lastTime = 0;
+        this.entities = [];
+        this.isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         this.init(playerOptions);
     }
 
     init(playerOptions) {
-        this.resizeCanvas(); window.addEventListener('resize', () => this.resizeCanvas());
+        // --- 1. Set up the world and input ---
+        this.resizeCanvas();
+        window.addEventListener('resize', () => this.resizeCanvas());
         this.input = new InputHandler(this.isMobile);
         this.world = new World(this.ctx, WORLD_SIZE, WORLD_SIZE);
         ParticleSystem.init(this.ctx);
 
-        // --- THE FINAL LOGIC ---
-        // 1. Create the UI object. It's empty for now.
+        // --- 2. Create the Player object ---
+        // We create a placeholder player object so the UI can be created safely.
+        if (playerOptions) { // New character
+            this.player = new Player(RESPAWN_POINT.x, RESPAWN_POINT.y, this.input, playerOptions.name, playerOptions.race);
+        } else { // Loaded character
+            this.player = new Player(RESPAWN_POINT.x, RESPAWN_POINT.y, this.input, 'Loading...', 'Human');
+        }
+
+        // --- 3. Create the UI ---
+        // Now that `this.player` exists, the UI can be created without errors.
         this.ui = new UI(this);
 
-        if (playerOptions) {
-            // 2. This is a BRAND NEW character. Create the player.
-            this.player = new Player(RESPAWN_POINT.x, RESPAWN_POINT.y, this.input, playerOptions.name, playerOptions.race);
+        // --- 4. Load saved data OR set up a new game ---
+        if (playerOptions) { // New game
             this.player.autoSlotAbilities();
             this.spawnEntities();
-            
-            // 3. Now that the player exists, set up the action bar.
-            this.ui.setupActionbar(this.player);
-
-        } else {
-            // 2. This is for a character LOADED from the cloud. Create a temporary player.
-            this.player = new Player(RESPAWN_POINT.x, RESPAWN_POINT.y, this.input, 'Loading...', 'Human');
-            
-            // 3. Load the real data. The loadGame() function will call setupActionbar internally.
+            this.ui.setupActionbar(this.player); // Set up the UI for the new player
+        } else { // Load game
             if (!this.loadGame()) {
                 console.error("Cloud load failed unexpectedly.");
-                this.spawnEntities(); 
+                this.spawnEntities(); // Fallback if load fails
             }
         }
 
+        // --- 5. Finalize setup ---
         this.camera = new Camera(this.player, this.canvas.width, this.canvas.height);
-        
-        this.ui.updateAll(this.player);
-        this.setupUIInteractions(); 
+        this.setupUIInteractions();
         this.initAtmosphere();
-        setInterval(() => this.saveGame(true), 30000);
+        this.saveInterval = setInterval(() => this.saveGame(true), 30000); // Changed from setInterval
         this.gameLoop(0);
     }
+
     saveGame(isAutoSave = false) {
         if (!this.player || this.player.isDead || this.player.isGhost || !currentUser) return;
-        
-        // This is a helper function to safely create an item object for saving.
+
         const createSafeItemObject = (item) => {
             if (!item) return null;
             const safeItem = { id: item.id };
-            if (item.quantity !== undefined) {
-                safeItem.quantity = item.quantity;
-            }
-            if (item.durability !== undefined) {
-                safeItem.durability = item.durability;
-            }
+            if (item.quantity !== undefined) safeItem.quantity = item.quantity;
+            if (item.durability !== undefined) safeItem.durability = item.durability;
             return safeItem;
         };
 
         const saveData = {
             player: {
-                x: this.player.x, y: this.player.y,
-                name: this.player.name, race: this.player.race,
-                level: this.player.level, xp: this.player.xp,
-                restedXp: this.player.restedXp, gold: this.player.gold,
+                x: this.player.x,
+                y: this.player.y,
+                name: this.player.name,
+                race: this.player.race,
+                level: this.player.level,
+                xp: this.player.xp,
+                restedXp: this.player.restedXp,
+                gold: this.player.gold,
                 baseStats: { ...this.player.baseStats },
                 stats: { health: this.player.stats.health, mana: this.player.stats.mana },
                 isResting: this.player.isResting,
                 lastSaveTimestamp: Date.now(),
-                
-                // --- THE FINAL FIX IS HERE ---
                 inventory: this.player.inventory.map(createSafeItemObject),
                 equipment: Object.entries(this.player.equipment).reduce((acc, [slot, item]) => {
                     acc[slot] = createSafeItemObject(item);
                     return acc;
                 }, {}),
                 storage: this.player.storage.map(createSafeItemObject),
-                // --- END OF FINAL FIX ---
-
-                hotbar: this.player.hotbar.map(slot => { 
-                    if (!slot) return null; 
-                    if (slot.type === 'ability') { return { type: 'ability', id: slot.ref.id }; } 
-                    if (slot.type === 'item') { 
-                        const invIndex = this.player.inventory.indexOf(slot.ref); 
-                        return invIndex > -1 ? { type: 'item', invIndex: invIndex } : null; 
-                    } 
-                    return null; 
+                hotbar: this.player.hotbar.map(slot => {
+                    if (!slot) return null;
+                    if (slot.type === 'ability') return { type: 'ability', id: slot.ref.id };
+                    if (slot.type === 'item') {
+                        const invIndex = this.player.inventory.indexOf(slot.ref);
+                        return invIndex > -1 ? { type: 'item', invIndex: invIndex } : null;
+                    }
+                    return null;
                 }),
                 quests: this.player.quests.map(q => ({ id: q.id, progress: q.progress.map(p => p.current) })),
                 recipes: this.player.recipes.map(r => r.id),
@@ -646,8 +646,9 @@ class Game {
                 talentPoints: this.player.talentPoints,
                 reputation: { ...this.player.reputation },
                 professions: { ...this.player.professions },
-                questCooldowns: Object.entries(this.player.questCooldowns).reduce((acc, [id, timeLeft]) => { 
-                    acc[id] = Date.now() + timeLeft; return acc; 
+                questCooldowns: Object.entries(this.player.questCooldowns).reduce((acc, [id, timeLeft]) => {
+                    acc[id] = Date.now() + timeLeft;
+                    return acc;
                 }, {}),
                 hasHouse: this.player.hasHouse,
                 pets: this.player.pets,
@@ -656,7 +657,7 @@ class Game {
         };
 
         saveGameToCloud(currentUser.uid, saveData);
-        
+
         if (!isAutoSave) {
             this.createFloatingText("Game Saved!", this.player.x, this.player.y, 'gold');
         }
@@ -665,8 +666,8 @@ class Game {
     loadGame() {
         const savedJSON = sessionStorage.getItem('saveData');
         if (!savedJSON || savedJSON === 'null') {
-             console.log("No save data found, cannot load game.");
-             return false;
+            console.log("No save data found, cannot load game.");
+            return false;
         }
 
         try {
@@ -674,17 +675,38 @@ class Game {
             const pData = saveData.player;
 
             this.spawnEntities();
-            
-            this.player.name = pData.name; this.player.race = pData.race; this.player.x = pData.x; this.player.y = pData.y; this.player.level = pData.level; this.player.xp = pData.xp; this.player.restedXp = pData.restedXp; this.player.gold = pData.gold; this.player.baseStats = { ...pData.baseStats }; this.player.talents = { ...pData.talents }; this.player.talentPoints = pData.talentPoints; this.player.reputation = { ...pData.reputation }; this.player.professions = { ...pData.professions }; this.player.pets = pData.pets || {}; this.player.activePetId = pData.activePetId || null; this.player.nextLevelXp = GameData.XP_TABLE[this.player.level] || 99999; 
+
+            this.player.name = pData.name;
+            this.player.race = pData.race;
+            this.player.x = pData.x;
+            this.player.y = pData.y;
+            this.player.level = pData.level;
+            this.player.xp = pData.xp;
+            this.player.restedXp = pData.restedXp;
+            this.player.gold = pData.gold;
+            this.player.baseStats = { ...pData.baseStats };
+            this.player.talents = { ...pData.talents };
+            this.player.talentPoints = pData.talentPoints;
+            this.player.reputation = { ...pData.reputation };
+            this.player.professions = { ...pData.professions };
+            this.player.pets = pData.pets || {};
+            this.player.activePetId = pData.activePetId || null;
+            this.player.nextLevelXp = GameData.XP_TABLE[this.player.level] || 99999;
             this.player.hasHouse = pData.hasHouse || false;
             this.player.storage = (pData.storage || new Array(99).fill(null)).map(itemData => {
-                 if (!itemData) return null;
-                 const baseItem = { ...GameData.ITEMS[itemData.id] };
-                 baseItem.quantity = itemData.quantity;
-                 if (itemData.durability !== undefined) baseItem.durability = itemData.durability;
-                 return baseItem;
+                if (!itemData) return null;
+                const baseItem = { ...GameData.ITEMS[itemData.id] };
+                baseItem.quantity = itemData.quantity;
+                if (itemData.durability !== undefined) baseItem.durability = itemData.durability;
+                return baseItem;
             });
-            this.player.inventory = pData.inventory.map(itemData => { if (!itemData) return null; const baseItem = { ...GameData.ITEMS[itemData.id] }; baseItem.quantity = itemData.quantity; if (itemData.durability !== undefined) baseItem.durability = itemData.durability; return baseItem; });
+            this.player.inventory = pData.inventory.map(itemData => {
+                if (!itemData) return null;
+                const baseItem = { ...GameData.ITEMS[itemData.id] };
+                baseItem.quantity = itemData.quantity;
+                if (itemData.durability !== undefined) baseItem.durability = itemData.durability;
+                return baseItem;
+            });
             this.player.equipment = {};
             for (const slot in pData.equipment) {
                 const itemData = pData.equipment[slot];
@@ -697,13 +719,34 @@ class Game {
                     this.player.equipment[slot] = null;
                 }
             }
-            this.player.quests = []; pData.quests.forEach(qData => { const questTemplate = GameData.QUESTS[qData.id]; const questGiver = this.entities.find(e => e instanceof QuestGiver && e.questIds.includes(qData.id)); if (questTemplate && questGiver) { this.player.quests.push({ ...questTemplate, progress: questTemplate.objectives.map((o, i) => ({ ...o, current: qData.progress[i] || 0 })), giver: questGiver }); } }); if (pData.spellbook) {
+            this.player.quests = [];
+            pData.quests.forEach(qData => {
+                const questTemplate = GameData.QUESTS[qData.id];
+                const questGiver = this.entities.find(e => e instanceof QuestGiver && e.questIds.includes(qData.id));
+                if (questTemplate && questGiver) {
+                    this.player.quests.push({ ...questTemplate, progress: questTemplate.objectives.map((o, i) => ({ ...o, current: qData.progress[i] || 0 })), giver: questGiver });
+                }
+            });
+            if (pData.spellbook) {
                 this.player.spellbook = pData.spellbook.map(id => GameData.ABILITIES[id]);
             }
             this.player.recipes = pData.recipes.map(id => GameData.CRAFTING_RECIPES[id]);
-            this.player.hotbar = pData.hotbar.map(slotData => { if (!slotData) return null; if (slotData.type === 'ability') { return { type: 'ability', ref: GameData.ABILITIES[slotData.id] }; } if (slotData.type === 'item' && slotData.invIndex !== undefined) { const item = this.player.inventory[slotData.invIndex]; return item ? { type: 'item', ref: item } : null; } return null; });
-            this.player.questCooldowns = {}; for(const id in pData.questCooldowns) { const endTime = pData.questCooldowns[id]; const timeLeft = endTime - Date.now(); if (timeLeft > 0) this.player.questCooldowns[id] = timeLeft; }
-            
+            this.player.hotbar = pData.hotbar.map(slotData => {
+                if (!slotData) return null;
+                if (slotData.type === 'ability') return { type: 'ability', ref: GameData.ABILITIES[slotData.id] };
+                if (slotData.type === 'item' && slotData.invIndex !== undefined) {
+                    const item = this.player.inventory[slotData.invIndex];
+                    return item ? { type: 'item', ref: item } : null;
+                }
+                return null;
+            });
+            this.player.questCooldowns = {};
+            for (const id in pData.questCooldowns) {
+                const endTime = pData.questCooldowns[id];
+                const timeLeft = endTime - Date.now();
+                if (timeLeft > 0) this.player.questCooldowns[id] = timeLeft;
+            }
+
             if (pData.lastSaveTimestamp && pData.isResting) {
                 const offlineSeconds = (Date.now() - pData.lastSaveTimestamp) / 1000;
                 const restedGained = offlineSeconds * 0.5;
@@ -720,15 +763,13 @@ class Game {
                 const petIdToActivate = this.player.activePetId;
                 this.player.activePetId = null;
                 const newPet = this.player.setActivePet(petIdToActivate);
-                if (newPet) {
-                    this.entities.push(newPet);
-                }
+                if (newPet) this.entities.push(newPet);
             }
             this.player.stats.health = pData.stats.health;
             this.player.stats.mana = pData.stats.mana;
             this.ui.setupActionbar(this.player);
             this.ui.updateAll(this.player);
-     
+
             console.log("Game loaded from cloud successfully!");
             return true;
         } catch (e) {
@@ -736,10 +777,18 @@ class Game {
             return false;
         }
     }
-    resizeCanvas() { this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight; if(this.camera) { this.camera.width = this.canvas.width; this.camera.height = this.canvas.height; } }
+
+    resizeCanvas() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        if (this.camera) {
+            this.camera.width = this.canvas.width;
+            this.camera.height = this.canvas.height;
+        }
+    }
+
     spawnEntities() {
         this.entities = [];
-
         GameData.REGIONS.forEach(regionData => {
             if (regionData.npcs) {
                 regionData.npcs.forEach(npc => {
@@ -752,56 +801,38 @@ class Game {
                         npcEntity = new CraftingStation(npc.x, npc.y, GameData.CRAFTING_STATIONS[npc.stationType]);
                     } else if (npc.type === 'DungeonEntrance') {
                         npcEntity = new DungeonEntrance(npc.x, npc.y, npc.name, npc.target, npc.isExit);
-                    } 
-                    else if (npc.type === 'Portal') {
+                    } else if (npc.type === 'Portal') {
                         npcEntity = new Portal(npc.x, npc.y, npc.name, npc.target);
-                    }
-                    // --- NEW: Add a case to handle specifically placed scenery ---
-                    else if (npc.type === 'Scenery') {
+                    } else if (npc.type === 'Scenery') {
                         const sceneryData = GameData.SCENERY[npc.sceneryId];
-                        if (sceneryData) {
-                            npcEntity = new Scenery(npc.x, npc.y, sceneryData);
-                        }
-                    }
-                    else if (npc.type === 'PlayerHouse') {
+                        if (sceneryData) npcEntity = new Scenery(npc.x, npc.y, sceneryData);
+                    } else if (npc.type === 'PlayerHouse') {
                         const houseData = GameData.PLAYER_HOUSE_DATA[npc.houseId];
-                        if (houseData) {
-                            npcEntity = new PlayerHouse(npc.x, npc.y, houseData);
-                        }
-                    }
-                    else if (npc.type === 'StorageContainer') {
+                        if (houseData) npcEntity = new PlayerHouse(npc.x, npc.y, houseData);
+                    } else if (npc.type === 'StorageContainer') {
                         npcEntity = new StorageContainer(npc.x, npc.y, npc.icon, npc.color, npc.size);
                     }
                     if (npcEntity) this.entities.push(npcEntity);
                 });
             }
-            
+
             if (regionData.enemyPacks) {
                 regionData.enemyPacks.forEach(pack => {
                     for (let i = 0; i < pack.count; i++) {
-                        // --- THIS IS THE BLOCK TO REPLACE ---
                         let x = pack.packCenter.x + (Math.random() - 0.5) * 2 * pack.packRadius;
                         let y = pack.packCenter.y + (Math.random() - 0.5) * 2 * pack.packRadius;
-                        
-                        // --- NEW: Safe Zone Logic ---
                         const SAFE_ZONE_RADIUS = 1300;
-                        const distFromOrigin = distance({x, y}, RESPAWN_POINT);
-
+                        const distFromOrigin = distance({ x, y }, RESPAWN_POINT);
                         if (distFromOrigin < SAFE_ZONE_RADIUS) {
-                            // This spawn is inside the safe zone. Let's push it out.
                             const angle = Math.atan2(y - RESPAWN_POINT.y, x - RESPAWN_POINT.x);
                             x = RESPAWN_POINT.x + Math.cos(angle) * SAFE_ZONE_RADIUS;
                             y = RESPAWN_POINT.y + Math.sin(angle) * SAFE_ZONE_RADIUS;
                         }
-                        // --- END of Safe Zone Logic ---
-
                         let level = null;
                         if (pack.levelMin && pack.levelMax) {
                             level = Math.floor(Math.random() * (pack.levelMax - pack.levelMin + 1)) + pack.levelMin;
                         }
-                        
                         this.entities.push(new Enemy(x, y, GameData.ENEMY_TYPES[pack.type], level));
-                        // --- END OF REPLACEMENT BLOCK ---
                     }
                 });
             }
@@ -823,18 +854,12 @@ class Game {
                         const y = patch.patchCenter.y + (Math.random() - 0.5) * 2 * patch.patchRadius;
                         const randomSceneryId = patch.type[Math.floor(Math.random() * patch.type.length)];
                         const baseSceneryType = GameData.SCENERY[randomSceneryId];
-                        
-                        // --- FIX: Logic to randomize tree height ---
                         if (baseSceneryType) {
-                            // Create a copy so we don't modify the original GameData object
                             const sceneryInstanceData = { ...baseSceneryType };
-
-                            // Only randomize the size for non-bushes (bush is ID 3)
                             if (sceneryInstanceData.id !== 3) {
-                                const sizeMultiplier = 0.8 + Math.random() * 0.4; // Random size from 80% to 120%
+                                const sizeMultiplier = 0.8 + Math.random() * 0.4;
                                 sceneryInstanceData.size = Math.round(sceneryInstanceData.size * sizeMultiplier);
                             }
-                            
                             this.entities.push(new Scenery(x, y, sceneryInstanceData));
                         }
                     }
@@ -850,32 +875,35 @@ class Game {
                 const y = game.camera.y + Math.random() * game.camera.height;
                 ParticleSystem.create(x, y, 'rgba(255, 255, 255, 0.03)', 1, 8, 0.1, { vx: (Math.random() - 0.5) * 0.2, vy: (Math.random() - 0.5) * 0.2 });
             }
-        // --- FIX: Interval reduced from 100 to 33 to triple the fog particle rate ---
         }, 33);
-
         setInterval(() => {
             if (game && game.camera) {
                 const x = game.camera.x + Math.random() * game.camera.width;
                 const y = game.camera.y + Math.random() * game.camera.height;
                 ParticleSystem.create(x, y, 'yellow', 10, 1.5, 3, { vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4 });
             }
-        // --- FIX: Interval reduced from 4000-7000 to 1333-2333 to triple the insect swarm rate ---
         }, 1333 + Math.random() * 1000);
     }
 
-    gameLoop(timestamp) { const deltaTime = timestamp - this.lastTime; this.lastTime = timestamp; this.update(deltaTime); this.draw(); requestAnimationFrame((ts) => this.gameLoop(ts)); }
+    gameLoop(timestamp) {
+        const deltaTime = timestamp - this.lastTime;
+        this.lastTime = timestamp;
+        this.update(deltaTime);
+        this.draw();
+        requestAnimationFrame((ts) => this.gameLoop(ts));
+    }
+
     update(deltaTime) {
         if (!deltaTime) return;
-        if (this.player.isRooted) this.input.joystickVector = {x: 0, y: 0};
+        if (this.player.isRooted) this.input.joystickVector = { x: 0, y: 0 };
 
         if (this.input.mouse.clicked && !this.player.isAutoQuesting && !this.player.isGhost) {
-            let clickedOnSomething = false; 
+            let clickedOnSomething = false;
             const clickWorldPos = { x: this.input.mouse.x + this.camera.x, y: this.input.mouse.y + this.camera.y };
             const sortedEntities = [...this.entities].sort((a, b) => b.y - a.y);
 
             for (const entity of sortedEntities) {
                 if (entity !== this.player && distance(clickWorldPos, entity) < entity.size / 2) {
-                    
                     if (entity instanceof Enemy) {
                         if (entity === this.player.target && !entity.isDead) {
                             this.player.performClickAttack();
@@ -884,17 +912,12 @@ class Game {
                         }
                         clickedOnSomething = true;
                         break;
-                    } 
-                    // --- UPGRADED LOGIC FOR INTERACTABLES ---
-                    else if (entity.isInteractable) {
-                        // If it's a resource node AND we're out of range...
+                    } else if (entity.isInteractable) {
                         if (entity instanceof ResourceNode && distance(this.player, entity) > 100) {
-                            // ...set it as our auto-move-interact target.
                             this.player.autoMoveInteractTarget = entity;
                         } else if (distance(this.player, entity) < 100) {
-                            // Otherwise, if we're in range, interact immediately.
-                            this.player.autoMoveInteractTarget = null; // Cancel any auto-move
-                            entity.interact(this.player); 
+                            this.player.autoMoveInteractTarget = null;
+                            entity.interact(this.player);
                         }
                         this.player.setTarget(entity);
                         clickedOnSomething = true;
@@ -902,11 +925,10 @@ class Game {
                     }
                 }
             }
-
             if (!clickedOnSomething) this.player.setTarget(null);
             this.input.mouse.clicked = false;
         }
-        
+
         const mouseWorldPos = { x: this.input.mouse.x + this.camera.x, y: this.input.mouse.y + this.camera.y };
         let nodeHovered = false;
         this.entities.forEach(entity => {
@@ -924,67 +946,70 @@ class Game {
         this.entities.forEach(entity => entity.update(deltaTime, this.world, this.entities, this.player));
 
         const deadNPCs = this.entities.filter(e => e.isDead && e !== this.player && !(e instanceof PlayerCorpse));
-        if(deadNPCs.length > 0) {
-            deadNPCs.forEach(dead => { if (dead === this.player.target) this.player.setTarget(null); });
+        if (deadNPCs.length > 0) {
+            deadNPCs.forEach(dead => {
+                if (dead === this.player.target) this.player.setTarget(null);
+            });
             this.entities = this.entities.filter(e => !deadNPCs.includes(e));
         }
-        this.camera.update(); ParticleSystem.update(deltaTime); this.ui.update(this.player, deltaTime);
+        this.camera.update();
+        ParticleSystem.update(deltaTime);
+        this.ui.update(this.player, deltaTime);
         this.world.updateAmbiance(deltaTime);
     }
-    
+
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.world.draw(this.camera, this.player.isGhost);
-
         const objectsToDraw = [...this.entities, this.player];
         objectsToDraw.sort((a, b) => a.y - b.y);
-
         objectsToDraw.forEach(obj => {
             obj.draw(this.ctx, this.camera, this.player);
         });
-
         ParticleSystem.draw(this.camera);
     }
 
-    createFloatingText(text, x, y, color, type = '') { this.ui.createFloatingText(text, x, y, color, this.camera, type); }
-        setupUIInteractions() {
-        if (this.isMobile) $("#mobile-controls").style.display = "block";
-        
-        $$('.sys-button').forEach(btn => btn.addEventListener('click', () => { 
-            const windowId = btn.dataset.window; 
-            if (windowId) { 
-                const win = $(`#${windowId}`); 
-                win.style.display = win.style.display === 'flex' ? 'none' : 'flex'; 
-                this.ui.updateAll(this.player); 
-            } 
-        }));
-        
-        $('#save-button').addEventListener('click', () => { 
-            this.saveGame(); 
-            this.createFloatingText("Game Saved!", this.player.x, this.player.y, 'gold'); 
-        });
+    createFloatingText(text, x, y, color, type = '') {
+        this.ui.createFloatingText(text, x, y, color, this.camera, type);
+    }
 
-        // --- MODIFY THIS BLOCK ---
-        $$('.close-btn').forEach(btn => btn.addEventListener('click', (e) => { 
-            const windowElement = e.target.closest('.window');
-            windowElement.style.display = 'none'; 
-            this.ui.tooltip.style.display = 'none';
-            
-            // --- FIX: Add this check to remove the listener when the crafting window is closed ---
-            if (windowElement.id === 'crafting-window' && this.ui.boundCraftingHandler) {
-                $('#craft-button').removeEventListener('click', this.ui.boundCraftingHandler);
-                this.ui.boundCraftingHandler = null; // Clean up the reference
+    setupUIInteractions() {
+        if (this.isMobile) $("#mobile-controls").style.display = "block";
+        $$('.sys-button').forEach(btn => btn.addEventListener('click', () => {
+            const windowId = btn.dataset.window;
+            if (windowId) {
+                const win = $(`#${windowId}`);
+                win.style.display = win.style.display === 'flex' ? 'none' : 'flex';
+                this.ui.updateAll(this.player);
             }
         }));
-
-        $$('.window').forEach(win => this.ui.makeDraggable(win));
-        window.addEventListener('keydown', (e) => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; const keyMap = {c: '#character-window', i: '#inventory-window', l: '#quest-log-window', n: '#talent-window', p: '#spellbook-window', u: '#reputation-window', m: '#map-window'}; if(keyMap[e.key.toLowerCase()]){ const win = $(keyMap[e.key.toLowerCase()]); win.style.display = win.style.display === 'flex' ? 'none' : 'flex'; this.ui.updateAll(this.player); } });
-        $('#release-spirit-button').addEventListener('click', () => this.player.releaseSpirit());
-        
-        window.addEventListener('mouseleave', () => { 
-            this.ui.tooltip.style.display = 'none'; 
+        $('#save-button').addEventListener('click', () => {
+            this.saveGame();
+            this.createFloatingText("Game Saved!", this.player.x, this.player.y, 'gold');
         });
-
+        $$('.close-btn').forEach(btn => btn.addEventListener('click', (e) => {
+            const windowElement = e.target.closest('.window');
+            windowElement.style.display = 'none';
+            this.ui.tooltip.style.display = 'none';
+            if (windowElement.id === 'crafting-window' && this.ui.boundCraftingHandler) {
+                $('#craft-button').removeEventListener('click', this.ui.boundCraftingHandler);
+                this.ui.boundCraftingHandler = null;
+            }
+        }));
+        $$('.window').forEach(win => this.ui.makeDraggable(win));
+        window.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            const keyMap = { c: '#character-window', i: '#inventory-window', l: '#quest-log-window', n: '#talent-window', p: '#spellbook-window', u: '#reputation-window', m: '#map-window' };
+            if (keyMap[e.key.toLowerCase()]) {
+                const win = $(keyMap[e.key.toLowerCase()]);
+                win.style.display = win.style.display === 'flex' ? 'none' : 'flex';
+                this.ui.updateAll(this.player);
+            }
+        });
+        $('#release-spirit-button').addEventListener('click', () => this.player.releaseSpirit());
+        window.addEventListener('mouseleave', () => {
+            this.ui.tooltip.style.display = 'none';
+        });
         window.addEventListener('mousedown', () => {
             if (this.ui && this.ui.tooltip) {
                 this.ui.tooltip.style.display = 'none';
@@ -2906,10 +2931,15 @@ class InputHandler {
     getMoveVector() { if(this.isMobile) return this.joystickVector; let vector = { x: 0, y: 0 }; if (this.keys['w']) vector.y -= 1; if (this.keys['s']) vector.y += 1; if (this.keys['a']) vector.x -= 1; if (this.keys['d']) vector.x += 1; return vector; }
 }
 class UI {
-    constructor(game) {
+    constructor(options) {
+        this.canvas = $('#game-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.isMobile = /Mobi|Android/i.test(navigator.userAgent)
+        this.init(options);
         this.game = game;
         this.canvas = $('#hud-canvas');
         this.ctx = this.canvas.getContext('2d');
+        this.setupActionbar(this.game.player); 
         this.mapCanvas = $("#map-canvas"); 
         this.mapCtx = this.mapCanvas.getContext("2d"); 
         this.tooltip = $('#tooltip'); 
