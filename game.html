@@ -10,7 +10,6 @@
 </head>
 <body>
     
-    <!-- NEW: Add the character creation screen here -->
     <div id="character-creation-screen" class="fullscreen-overlay" style="display: none;">
         <div class="menu-box">
             <h1>Create Your Hero</h1>
@@ -29,7 +28,6 @@
         </div>
     </div>
 
-    <!-- ALL your game UI divs (#game-container, #hud, etc.) go here -->
     <div id="game-container">
         <canvas id="game-canvas"></canvas>
         <div id="hud">
@@ -151,12 +149,10 @@
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
-    <!-- Our main game script -->
-    <script type="module" src="game_v3.js"></script>
+    <script type="module" src="game_final.js"></script>
 </body>
 </html>
