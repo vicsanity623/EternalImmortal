@@ -582,12 +582,10 @@ class Game {
         setInterval(() => this.saveGame(true), 30000);
         this.gameLoop(0);
     }
-
     saveGame(isAutoSave = false) {
         if (!this.player || this.player.isDead || this.player.isGhost || !currentUser) return;
         
         // This is a helper function to safely create an item object for saving.
-        // It belongs INSIDE the saveGame function.
         const createSafeItemObject = (item) => {
             if (!item) return null;
             const safeItem = { id: item.id };
@@ -599,7 +597,7 @@ class Game {
             }
             return safeItem;
         };
-    
+
         const saveData = {
             player: {
                 x: this.player.x, y: this.player.y,
@@ -609,13 +607,18 @@ class Game {
                 baseStats: { ...this.player.baseStats },
                 stats: { health: this.player.stats.health, mana: this.player.stats.mana },
                 isResting: this.player.isResting,
-                timestamp: Date.now(),
+                lastSaveTimestamp: Date.now(),
+                timestamp: Date.now()
+                
+                // --- THE FINAL FIX IS HERE ---
                 inventory: this.player.inventory.map(createSafeItemObject),
                 equipment: Object.entries(this.player.equipment).reduce((acc, [slot, item]) => {
                     acc[slot] = createSafeItemObject(item);
                     return acc;
                 }, {}),
                 storage: this.player.storage.map(createSafeItemObject),
+                // --- END OF FINAL FIX ---
+
                 hotbar: this.player.hotbar.map(slot => { 
                     if (!slot) return null; 
                     if (slot.type === 'ability') { return { type: 'ability', id: slot.ref.id }; } 
@@ -640,7 +643,7 @@ class Game {
                 activePetId: this.player.activePetId
             }
         };
-    
+
         saveGameToCloud(currentUser.uid, saveData);
         
         if (!isAutoSave) {
