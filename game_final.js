@@ -582,10 +582,12 @@ class Game {
         setInterval(() => this.saveGame(true), 30000);
         this.gameLoop(0);
     }
+
     saveGame(isAutoSave = false) {
         if (!this.player || this.player.isDead || this.player.isGhost || !currentUser) return;
         
         // This is a helper function to safely create an item object for saving.
+        // It belongs INSIDE the saveGame function.
         const createSafeItemObject = (item) => {
             if (!item) return null;
             const safeItem = { id: item.id };
@@ -597,71 +599,50 @@ class Game {
             }
             return safeItem;
         };
-
-        saveGame(isAutoSave = false) {
-    if (!this.player || this.player.isDead || this.player.isGhost || !currentUser) return;
     
-    // This is a helper function to safely create an item object for saving.
-    const createSafeItemObject = (item) => {
-        if (!item) return null;
-        const safeItem = { id: item.id };
-        if (item.quantity !== undefined) {
-            safeItem.quantity = item.quantity;
-        }
-        if (item.durability !== undefined) {
-            safeItem.durability = item.durability;
-        }
-        return safeItem;
-    };
-
-    const saveData = {
-        player: {
-            x: this.player.x, y: this.player.y,
-            name: this.player.name, race: this.player.race,
-            level: this.player.level, xp: this.player.xp,
-            restedXp: this.player.restedXp, gold: this.player.gold,
-            baseStats: { ...this.player.baseStats },
-            stats: { health: this.player.stats.health, mana: this.player.stats.mana },
-            isResting: this.player.isResting,
-            
-            // --- CLEANUP & FIX ---
-            // 1. Removed the redundant 'lastSaveTimestamp' property.
-            // 2. Added the required comma after this line to fix the syntax error.
-            timestamp: Date.now(),
-
-            inventory: this.player.inventory.map(createSafeItemObject),
-            equipment: Object.entries(this.player.equipment).reduce((acc, [slot, item]) => {
-                acc[slot] = createSafeItemObject(item);
-                return acc;
-            }, {}),
-            storage: this.player.storage.map(createSafeItemObject),
-            hotbar: this.player.hotbar.map(slot => { 
-                if (!slot) return null; 
-                if (slot.type === 'ability') { return { type: 'ability', id: slot.ref.id }; } 
-                if (slot.type === 'item') { 
-                    const invIndex = this.player.inventory.indexOf(slot.ref); 
-                    return invIndex > -1 ? { type: 'item', invIndex: invIndex } : null; 
-                } 
-                return null; 
-            }),
-            quests: this.player.quests.map(q => ({ id: q.id, progress: q.progress.map(p => p.current) })),
-            recipes: this.player.recipes.map(r => r.id),
-            spellbook: this.player.spellbook.map(a => a.id),
-            talents: { ...this.player.talents },
-            talentPoints: this.player.talentPoints,
-            reputation: { ...this.player.reputation },
-            professions: { ...this.player.professions },
-            questCooldowns: Object.entries(this.player.questCooldowns).reduce((acc, [id, timeLeft]) => { 
-                acc[id] = Date.now() + timeLeft; return acc; 
-            }, {}),
-            hasHouse: this.player.hasHouse,
-            pets: this.player.pets,
-            activePetId: this.player.activePetId
-        }
-    };
-
-    saveGameToCloud(currentUser.uid, saveData);
+        const saveData = {
+            player: {
+                x: this.player.x, y: this.player.y,
+                name: this.player.name, race: this.player.race,
+                level: this.player.level, xp: this.player.xp,
+                restedXp: this.player.restedXp, gold: this.player.gold,
+                baseStats: { ...this.player.baseStats },
+                stats: { health: this.player.stats.health, mana: this.player.stats.mana },
+                isResting: this.player.isResting,
+                timestamp: Date.now(),
+                inventory: this.player.inventory.map(createSafeItemObject),
+                equipment: Object.entries(this.player.equipment).reduce((acc, [slot, item]) => {
+                    acc[slot] = createSafeItemObject(item);
+                    return acc;
+                }, {}),
+                storage: this.player.storage.map(createSafeItemObject),
+                hotbar: this.player.hotbar.map(slot => { 
+                    if (!slot) return null; 
+                    if (slot.type === 'ability') { return { type: 'ability', id: slot.ref.id }; } 
+                    if (slot.type === 'item') { 
+                        const invIndex = this.player.inventory.indexOf(slot.ref); 
+                        return invIndex > -1 ? { type: 'item', invIndex: invIndex } : null; 
+                    } 
+                    return null; 
+                }),
+                quests: this.player.quests.map(q => ({ id: q.id, progress: q.progress.map(p => p.current) })),
+                recipes: this.player.recipes.map(r => r.id),
+                spellbook: this.player.spellbook.map(a => a.id),
+                talents: { ...this.player.talents },
+                talentPoints: this.player.talentPoints,
+                reputation: { ...this.player.reputation },
+                professions: { ...this.player.professions },
+                questCooldowns: Object.entries(this.player.questCooldowns).reduce((acc, [id, timeLeft]) => { 
+                    acc[id] = Date.now() + timeLeft; return acc; 
+                }, {}),
+                hasHouse: this.player.hasHouse,
+                pets: this.player.pets,
+                activePetId: this.player.activePetId
+            }
+        };
     
+        saveGameToCloud(currentUser.uid, saveData);
+        
         if (!isAutoSave) {
             this.createFloatingText("Game Saved!", this.player.x, this.player.y, 'gold');
         }
