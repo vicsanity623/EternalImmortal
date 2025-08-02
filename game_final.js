@@ -556,7 +556,7 @@ class Game {
         this.init(playerOptions);
     }
 
-    async init(playerOptions) { // <-- CHANGE 1: Add 'async' here
+    init(playerOptions) {
         this.resizeCanvas(); window.addEventListener('resize', () => this.resizeCanvas());
         this.input = new InputHandler(this.isMobile);
         this.world = new World(this.ctx, WORLD_SIZE, WORLD_SIZE);
@@ -568,14 +568,14 @@ class Game {
             this.spawnEntities();
         } else {
             this.player = new Player(RESPAWN_POINT.x, RESPAWN_POINT.y, this.input, 'Loading...', 'Human');
-            // The game will now pause here until the cloud data is loaded and applied.
-            await this.loadGame(); // <-- CHANGE 2: Add 'await' here
+            if (!this.loadGame()) {
+                console.error("Cloud load failed unexpectedly.");
+            }
         }
-    
+
         this.ui = new UI(this);
         this.camera = new Camera(this.player, this.canvas.width, this.canvas.height);
         
-        // Now that loading is complete, update the UI.
         this.ui.updateAll(this.player);
         this.setupUIInteractions(); 
         this.initAtmosphere();
@@ -608,7 +608,6 @@ class Game {
                 stats: { health: this.player.stats.health, mana: this.player.stats.mana },
                 isResting: this.player.isResting,
                 lastSaveTimestamp: Date.now(),
-                timestamp: Date.now()
                 
                 // --- THE FINAL FIX IS HERE ---
                 inventory: this.player.inventory.map(createSafeItemObject),
@@ -651,28 +650,20 @@ class Game {
         }
     }
 
-    async loadGame() {
-        // 1. Fetch data directly from the cloud.
-        const saveData = await loadGameFromCloud(currentUser.uid);
-    
-        // 2. Check if any data was returned.
-        if (!saveData) {
-             console.log("No save data found in the cloud.");
-             // This is a special case: if loading fails, we need to stop the game from breaking.
-             // A robust solution would be to send the player to character creation.
-             alert("No save data found. Please create a new character.");
-             window.location.reload(); // Reload to start the character creation flow.
+    loadGame() {
+        const savedJSON = sessionStorage.getItem('saveData');
+        if (!savedJSON || savedJSON === 'null') {
+             console.log("No save data found, cannot load game.");
              return false;
         }
-    
+
         try {
-            // 3. The rest of your logic remains almost identical.
-            // NOTE: We no longer need JSON.parse() because loadGameFromCloud returns an object.
+            const saveData = JSON.parse(savedJSON);
             const pData = saveData.player;
-    
+
             this.spawnEntities();
             
-            this.player.name = pData.name; this.player.race = pData.race; this.player.x = pData.x; this.player.y = pData.y; this.player.level = pData.level; this.player.xp = pData.xp; this.player.restedXp = pData.restedXp || 0; this.player.gold = pData.gold; this.player.baseStats = { ...pData.baseStats }; this.player.talents = { ...pData.talents }; this.player.talentPoints = pData.talentPoints; this.player.reputation = { ...pData.reputation }; this.player.professions = { ...pData.professions }; this.player.pets = pData.pets || {}; this.player.activePetId = pData.activePetId || null; this.player.nextLevelXp = GameData.XP_TABLE[this.player.level] || 99999; 
+            this.player.name = pData.name; this.player.race = pData.race; this.player.x = pData.x; this.player.y = pData.y; this.player.level = pData.level; this.player.xp = pData.xp; this.player.restedXp = pData.restedXp; this.player.gold = pData.gold; this.player.baseStats = { ...pData.baseStats }; this.player.talents = { ...pData.talents }; this.player.talentPoints = pData.talentPoints; this.player.reputation = { ...pData.reputation }; this.player.professions = { ...pData.professions }; this.player.pets = pData.pets || {}; this.player.activePetId = pData.activePetId || null; this.player.nextLevelXp = GameData.XP_TABLE[this.player.level] || 99999; 
             this.player.hasHouse = pData.hasHouse || false;
             this.player.storage = (pData.storage || new Array(99).fill(null)).map(itemData => {
                  if (!itemData) return null;
@@ -694,38 +685,15 @@ class Game {
                     this.player.equipment[slot] = null;
                 }
             }
-            this.player.quests = [];
-            pData.quests.forEach(qData => {
-                const questTemplate = GameData.QUESTS[qData.id];
-                // IMPORTANT: We must find the quest giver from the entities we just spawned.
-                const questGiver = this.entities.find(e => e instanceof QuestGiver && e.questIds.includes(qData.id));
-                if (questTemplate && questGiver) {
-                    this.player.quests.push({ ...questTemplate, progress: questTemplate.objectives.map((o, i) => ({ ...o, current: qData.progress[i] || 0 })), giver: questGiver });
-                }
-            });
-            if (pData.spellbook) {
+            this.player.quests = []; pData.quests.forEach(qData => { const questTemplate = GameData.QUESTS[qData.id]; const questGiver = this.entities.find(e => e instanceof QuestGiver && e.questIds.includes(qData.id)); if (questTemplate && questGiver) { this.player.quests.push({ ...questTemplate, progress: questTemplate.objectives.map((o, i) => ({ ...o, current: qData.progress[i] || 0 })), giver: questGiver }); } }); if (pData.spellbook) {
                 this.player.spellbook = pData.spellbook.map(id => GameData.ABILITIES[id]);
             }
             this.player.recipes = pData.recipes.map(id => GameData.CRAFTING_RECIPES[id]);
-            this.player.hotbar = pData.hotbar.map(slotData => {
-                if (!slotData) return null;
-                if (slotData.type === 'ability') return { type: 'ability', ref: GameData.ABILITIES[slotData.id] };
-                if (slotData.type === 'item' && slotData.invIndex !== undefined) {
-                    const item = this.player.inventory[slotData.invIndex];
-                    return item ? { type: 'item', ref: item } : null;
-                }
-                return null;
-            });
-            this.player.questCooldowns = {};
-            for(const id in pData.questCooldowns) {
-                const endTime = pData.questCooldowns[id];
-                const timeLeft = endTime - Date.now();
-                if (timeLeft > 0) this.player.questCooldowns[id] = timeLeft;
-            }
+            this.player.hotbar = pData.hotbar.map(slotData => { if (!slotData) return null; if (slotData.type === 'ability') { return { type: 'ability', ref: GameData.ABILITIES[slotData.id] }; } if (slotData.type === 'item' && slotData.invIndex !== undefined) { const item = this.player.inventory[slotData.invIndex]; return item ? { type: 'item', ref: item } : null; } return null; });
+            this.player.questCooldowns = {}; for(const id in pData.questCooldowns) { const endTime = pData.questCooldowns[id]; const timeLeft = endTime - Date.now(); if (timeLeft > 0) this.player.questCooldowns[id] = timeLeft; }
             
-            // The property is 'timestamp' in the save file, not 'lastSaveTimestamp'
-            if (pData.timestamp && pData.isResting) {
-                const offlineSeconds = (Date.now() - pData.timestamp) / 1000;
+            if (pData.lastSaveTimestamp && pData.isResting) {
+                const offlineSeconds = (Date.now() - pData.lastSaveTimestamp) / 1000;
                 const restedGained = offlineSeconds * 0.5;
                 if (restedGained > 0) {
                     this.player.restedXp += restedGained;
@@ -734,11 +702,11 @@ class Game {
                     console.log(`Awarded ${Math.round(restedGained)} Rested XP for being offline.`);
                 }
             }
-    
+
             this.player.recalculateStats();
             if (this.player.activePetId) {
                 const petIdToActivate = this.player.activePetId;
-                this.player.activePetId = null; // Prevent recursion issues
+                this.player.activePetId = null;
                 const newPet = this.player.setActivePet(petIdToActivate);
                 if (newPet) {
                     this.entities.push(newPet);
@@ -746,16 +714,14 @@ class Game {
             }
             this.player.stats.health = pData.stats.health;
             this.player.stats.mana = pData.stats.mana;
-            
-            // These UI updates are now called from the init function after loading is complete.
-            // this.ui.setupActionbar(this.player); 
-            // this.ui.updateAll(this.player);
+            this.ui.setupActionbar(this.player);
+            this.ui.updateAll(this.player);
      
             console.log("Game loaded from cloud successfully!");
-            return true; // Signal success
+            return true;
         } catch (e) {
-            console.error("Failed to apply save data. It might be corrupted.", e);
-            return false; // Signal failure
+            console.error("Failed to load save data. It might be corrupted.", e);
+            return false;
         }
     }
     resizeCanvas() { this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight; if(this.camera) { this.camera.width = this.canvas.width; this.camera.height = this.canvas.height; } }
@@ -980,9 +946,10 @@ class Game {
                 this.ui.updateAll(this.player); 
             } 
         }));
-        saveGameToCloud(currentUser.uid, saveData);
+        
         $('#save-button').addEventListener('click', () => { 
             this.saveGame(); 
+            this.createFloatingText("Game Saved!", this.player.x, this.player.y, 'gold'); 
         });
 
         // --- MODIFY THIS BLOCK ---
