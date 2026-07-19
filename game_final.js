@@ -91,6 +91,12 @@ const GameData = {
         303: { id: 303, name: "Commander's Greathelm", icon: "fa-user-shield", slot: "head", quality: "epic", stats: { armor: 15, stamina: 5, strength: 5 }, requiredFaction: { name: 'Stormwind Guard', tier: 'Exalted' } },
         101: { id: 101, name: "Goblin-Forged Blade", icon: "fa-scythe", slot: "main-hand", quality: "rare", weaponDamage: { min: 8, max: 12 }, stats: { strength: 2 }, durability: 100, maxDurability: 100, sellPrice: 500 },
         102: { id: 102, name: "Enchanted Robes", icon: "fa-jedi", slot: "chest", quality: "magic", stats: { armor: 8, intellect: 3 }, durability: 100, maxDurability: 100, sellPrice: 400 },
+        35: { id: 35, name: "Tin Dagger", icon: "fa-dagger", slot: "main-hand", quality: "magic", weaponDamage: { min: 6, max: 9 }, stats: { agility: 2 }, durability: 100, maxDurability: 100, sellPrice: 600 },
+        36: { id: 36, name: "Tin Scale Coif", icon: "fa-helmet-battle", slot: "head", quality: "magic", stats: { armor: 8, stamina: 2 }, durability: 100, maxDurability: 100, sellPrice: 700 },
+        37: { id: 37, name: "Tin Leggings", icon: "fa-socks", slot: "legs", quality: "magic", stats: { armor: 10, stamina: 3 }, durability: 100, maxDurability: 100, sellPrice: 900 },
+        38: { id: 38, name: "Oak Longbow", icon: "fa-crosshairs", slot: "main-hand", quality: "magic", weaponDamage: { min: 9, max: 14 }, range: 1600, attackSpeed: 2200, durability: 100, maxDurability: 100, sellPrice: 800 },
+        39: { id: 39, name: "Silverleaf Elixir", icon: "fa-flask-vial", slot: "consumable", quality: "magic", stackable: true, onUse: (player) => { player.addBuff({ id: 'silverleaf_wisdom', name: 'Silverleaf Wisdom', icon: 'fa-brain', duration: 300000, onApply: p => { p.statBonuses.intellect = (p.statBonuses.intellect || 0) + 5; p.recalculateStats(); }, onExpire: p => { p.statBonuses.intellect = Math.max(0, (p.statBonuses.intellect || 0) - 5); p.recalculateStats(); }, isDebuff: false }); }, sellPrice: 350 },
+        40: { id: 40, name: "Greater Healing Potion", icon: "fa-flask-vial", slot: "consumable", quality: "magic", stackable: true, onUse: (player) => player.heal(200), sellPrice: 150 },
     },
     ABILITIES: {
         1: { id: 1, name: "Slash", icon: "fa-burst", cost: 0, cooldown: 3000, range: 90, 
@@ -240,7 +246,7 @@ const GameData = {
         },
     },
     NPC_TYPES: {
-        'BLACKSMITH': { name: "Barton the Blacksmith", icon: '\uf0e7', color: '#a9a9a9', interactType: 'repair' },
+        'BLACKSMITH': { name: "Barton the Blacksmith", icon: '\uf0e7', color: '#a9a9a9', interactType: 'repair', dialogue: { greeting: "Welcome, traveler. Need any repairs? I can fix that dented armor for a handful of coins.", idle: ["The forge fire keeps me warm on cold nights.", "Always keep your blade sharp.", "I've seen adventurers come and go. You've got potential."] } },
         'SPIRIT_HEALER': { name: "Spirit Healer", icon: '\uf70e', color: '#a0c4ff', interactType: 'resurrect', interaction: (player) => { if (player.isGhost) { const doRes = confirm("Resurrect here? You will suffer Resurrection Sickness and your equipped items will lose durability."); if(doRes) { player.resurrectAtHealer(); } } else { alert("The spirits can only help the dead."); } } },
         
         // --- THIS IS THE VENDOR TO FIX ---
@@ -249,18 +255,20 @@ const GameData = {
             // FIX: Add 'main-hand' to this array
             buys: ['consumable', 'material', 'main-hand', 'off-hand', 'head', 'chest', 'tabard'],
             startingGold: 100099,
-            sells: [{itemId: 5, quantity: 5, price: 50}] 
+            sells: [{itemId: 5, quantity: 5, price: 50}],
+            dialogue: { greeting: "Welcome! Take a look at my wares. Best prices in the region!", idle: ["Buying in bulk saves you coin.", "Travel light, I always say.", "The road is dangerous. Stock up while you can."] }
         },
 
-        'WOODWORKING_TRAINER': { name: "Master Woodworker", icon: '\uf6f8', color: '#8b4513', interactType: 'crafting_trainer', professions: ['Woodworking', 'Lumberjacking'] },
-        'BLACKSMITHING_TRAINER': { name: "Thorin the Smith", icon: '\uf6e3', color: '#d2b48c', interactType: 'crafting_trainer', professions: ['Blacksmithing', 'Mining'] },
-        'ALCHEMIST': { name: "Alchemist Fiona", icon: '\uf5a7', color: '#9932cc', interactType: 'crafting_trainer', professions: ['Alchemy', 'Herbalism'] },
+        'WOODWORKING_TRAINER': { name: "Master Woodworker", icon: '\uf6f8', color: '#8b4513', interactType: 'crafting_trainer', professions: ['Woodworking', 'Lumberjacking'], dialogue: { greeting: "Ah, a budding artisan! The wood speaks to those who listen.", idle: ["The grain of oak tells a story.", "Patience is as important as the chisel.", "Every master was once a beginner."] } },
+        'BLACKSMITHING_TRAINER': { name: "Thorin the Smith", icon: '\uf6e3', color: '#d2b48c', interactType: 'crafting_trainer', professions: ['Blacksmithing', 'Mining'], dialogue: { greeting: "Hah! You look like you could use a good weapon. Or maybe you want to learn to make your own?", idle: ["Strike while the iron is hot!", "A good smith respects his materials.", "Steel and sweat built this world."] } },
+        'ALCHEMIST': { name: "Alchemist Fiona", icon: '\uf5a7', color: '#9932cc', interactType: 'crafting_trainer', professions: ['Alchemy', 'Herbalism'], dialogue: { greeting: "The essence of life is in the plants around us. Let me show you how to extract it.", idle: ["Mixing potions is both art and science.", "A single herb can heal or harm.", "The formulas are ancient. Treat them with respect."] } },
 
+        'OLD_MAN_WILLOW': { name: "Old Man Willow", icon: '\uf0e7', color: '#ffd700', interactType: 'quest_giver', dialogue: { greeting: "Ah, another soul seeking purpose. The woods whisper of your arrival.", idle: ["These old eyes have seen much.", "The forest remembers everything.", "Stay clear of the spider dens to the south."], accept: "Old Man Willow ponders your words before nodding.\n\nAye, I have a task for you. The path ahead is dangerous, but I sense you are capable.", accepted: "Good, good. Return to me when the deed is done.", inProgress: "The task is not yet complete. The woods grow restless.", complete: "You have done well, my friend. The forest breathes easier because of you." } },
         'QUARTERMASTER': { name: "Stormwind Quartermaster", icon: '\uf4f7', color: '#0070dd', interactType: 'vendor', faction: 'Stormwind Guard', sells: [
             { itemId: 301, price: 5000 },
             { itemId: 302, price: 25000 },
             { itemId: 303, price: 100000 },
-        ], buys: [] },
+        ], buys: [], dialogue: { greeting: "State your business with the Stormwind Guard. Only our allies may purchase from this stock.", idle: ["The Guard keeps the realm safe.", "Earn your reputation among us.", "Supplies are limited. Choose wisely."] } },
     },
     QUESTS: { 
         // (Existing quests 1, 2, 3, 101, 102, 103, 104 remain the same)
@@ -286,6 +294,45 @@ const GameData = {
             requirements: [{ type: 'profession', name: 'Herbalism', level: 20 }],
             objectives: [ { type: 'gather', itemId: 13, count: 5 } ],
             rewards: { xp: 350, gold: 2500, recipes: ['potion_of_swiftness'] },
+            repeatable: false
+        },
+        // --- NEW PROGRESSIVE QUEST LINES (Day 2) ---
+        203: {
+            id: 203, title: "Clearing the Path",
+            description: "Goblin scouts have been spotted on the eastern path. They are scouting our defenses. Take out 5 Goblin Stalkers to show them this territory is protected.",
+            objectives: [ { type: 'kill', target: 'STALKER', count: 5 } ],
+            rewards: { xp: 300, gold: 2000, reputation: { faction: 'Stormwind Guard', value: 60 } },
+            repeatable: false
+        },
+        204: {
+            id: 204, title: "The Broodmother's Legacy",
+            description: "The Spider Lair festers with Venomfang Lurkers. Thin their numbers and you will be rewarded handsomely. Those beasts must not be allowed to spread.",
+            objectives: [ { type: 'kill', target: 'LURKER', count: 8 } ],
+            rewards: { xp: 500, gold: 3500, items: [{id: 3, quantity: 5}], reputation: { faction: 'Stormwind Guard', value: 100 } },
+            repeatable: false
+        },
+        205: {
+            id: 205, title: "A Hunter's Weapon",
+            description: "A local hunter has commissioned several bows. Your skill with woodworking is precisely what they need. Craft 3 Simple Wooden Bows for me.",
+            requirements: [{ type: 'profession', name: 'Woodworking', level: 3 }],
+            objectives: [ { type: 'craft', itemId: 30, count: 3 } ],
+            rewards: { xp: 300, gold: 3000, recipes: ['oak_longbow'], reputation: { faction: 'Stormwind Guard', value: 50 } },
+            repeatable: false
+        },
+        206: {
+            id: 206, title: "Tin Will Do",
+            description: "Now that you can smelt Tin, let us put it to the test. Bring me 10 Tin Bars so I can assess the quality of your smelting work.",
+            requirements: [{ type: 'profession', name: 'Blacksmithing', level: 20 }],
+            objectives: [ { type: 'gather', target: 'TIN BAR', itemId: 24, count: 10 } ],
+            rewards: { xp: 400, gold: 3500, recipes: ['tin_dagger', 'tin_scale_coif'], reputation: { faction: 'Stormwind Guard', value: 75 } },
+            repeatable: false
+        },
+        207: {
+            id: 207, title: "Potent Alchemy",
+            description: "The Silverleaf in these hills is especially potent. I want you to brew a Potion of Swiftness to prove you can handle the stronger reagents.",
+            requirements: [{ type: 'profession', name: 'Alchemy', level: 20 }],
+            objectives: [ { type: 'craft', itemId: 26, count: 1 } ],
+            rewards: { xp: 400, gold: 3000, recipes: ['greater_healing_potion', 'silverleaf_elixir'], reputation: { faction: 'Stormwind Guard', value: 75 } },
             repeatable: false
         },
     },
@@ -352,6 +399,12 @@ const GameData = {
         'tin_bar': { id: 'tin_bar', name: 'Tin Bar', icon: 'fa-cubes', itemId: 24, profession: 'Blacksmithing', skillRequired: 20, materials: [{itemId: 14, quantity: 2}], time: 2500, playerXpGain: 50 },
         'heavy_copper_armor': { id: 'heavy_copper_armor', name: 'Heavy Copper Armor', icon: 'fa-shirt', itemId: 25, profession: 'Blacksmithing', skillRequired: 25, materials: [{itemId: 18, quantity: 10}, {itemId: 24, quantity: 2}], time: 8000, playerXpGain: 50 },
         'potion_of_swiftness': { id: 'potion_of_swiftness', name: 'Potion of Swiftness', icon: 'fa-flask-vial', itemId: 26, profession: 'Alchemy', skillRequired: 20, materials: [{itemId: 13, quantity: 3}], time: 4000, playerXpGain: 50 },
+        'tin_dagger': { id: 'tin_dagger', name: 'Tin Dagger', icon: 'fa-dagger', itemId: 35, profession: 'Blacksmithing', skillRequired: 15, materials: [{itemId: 24, quantity: 1}, {itemId: 18, quantity: 1}], time: 4000, playerXpGain: 40 },
+        'tin_scale_coif': { id: 'tin_scale_coif', name: 'Tin Scale Coif', icon: 'fa-helmet-battle', itemId: 36, profession: 'Blacksmithing', skillRequired: 30, materials: [{itemId: 24, quantity: 3}, {itemId: 18, quantity: 2}], time: 6000, playerXpGain: 60 },
+        'tin_leggings': { id: 'tin_leggings', name: 'Tin Leggings', icon: 'fa-socks', itemId: 37, profession: 'Blacksmithing', skillRequired: 35, materials: [{itemId: 24, quantity: 5}, {itemId: 18, quantity: 3}], time: 8000, playerXpGain: 80 },
+        'oak_longbow': { id: 'oak_longbow', name: 'Oak Longbow', icon: 'fa-crosshairs', itemId: 38, profession: 'Woodworking', skillRequired: 15, materials: [{itemId: 15, quantity: 8}, {itemId: 24, quantity: 1}], time: 6000, playerXpGain: 50 },
+        'silverleaf_elixir': { id: 'silverleaf_elixir', name: 'Silverleaf Elixir', icon: 'fa-flask-vial', itemId: 39, profession: 'Alchemy', skillRequired: 25, materials: [{itemId: 13, quantity: 3}, {itemId: 12, quantity: 1}], time: 4000, playerXpGain: 60 },
+        'greater_healing_potion': { id: 'greater_healing_potion', name: 'Greater Healing Potion', icon: 'fa-flask-vial', itemId: 40, profession: 'Alchemy', skillRequired: 15, materials: [{itemId: 6, quantity: 2}, {itemId: 13, quantity: 1}], time: 3500, playerXpGain: 45 },
     },
     SKILL_RECIPE_UNLOCKS: {
         'Lumberjacking': [], 
@@ -359,7 +412,17 @@ const GameData = {
             { level: 1, recipeId: 'chair' },
             { level: 2, recipeId: 'pickaxe' },
             // --- NEW: Unlock the bow recipe at Woodworking level 3 ---
-            { level: 3, recipeId: 'simple_wooden_bow' }
+            { level: 3, recipeId: 'simple_wooden_bow' },
+            { level: 15, recipeId: 'oak_longbow' },
+        ],
+        'Blacksmithing': [
+            { level: 15, recipeId: 'tin_dagger' },
+            { level: 30, recipeId: 'tin_scale_coif' },
+            { level: 35, recipeId: 'tin_leggings' },
+        ],
+        'Alchemy': [
+            { level: 15, recipeId: 'greater_healing_potion' },
+            { level: 25, recipeId: 'silverleaf_elixir' },
         ]
     },
     PROFESSIONS: {
@@ -390,7 +453,7 @@ const GameData = {
                 { type: 'OAK_LOGS', count: 450, patchCenter: {x: 55000, y: 48000}, patchRadius: 4500 },     // 10x from 120
             ],
             npcs: [
-                { type: 'QuestGiver', name: "Old Man Willow", x: 50000, y: 49500, questIds: [1, 2, 3] },
+                { type: 'QuestGiver', name: "Old Man Willow", npcType: 'OLD_MAN_WILLOW', x: 50000, y: 49500, questIds: [1, 2, 3, 203, 204] },
                 // --- NEW: Add the cabin as a specifically placed scenery object ---
                 { type: 'PlayerHouse', houseId: 'CABIN', x: 50150, y: 49550 },
                 { type: 'Portal', name: "To the Goblin Hideout", x: 50300, y: 49400, target: { x: 87500, y: 29000 } },
@@ -398,11 +461,11 @@ const GameData = {
                 { type: 'GenericNPC', npcType: 'BLACKSMITH', x: 49000, y: 50500 },
                 { type: 'GenericNPC', npcType: 'GENERAL_VENDOR', x: 51000, y: 50500 },
                 { type: 'GenericNPC', npcType: 'SPIRIT_HEALER', x: 48500, y: 48000 },
-                { type: 'QuestGiver', name: "Master Woodworker", npcType: 'WOODWORKING_TRAINER', x: 49000, y: 49500, questIds: [101, 104] },
+                { type: 'QuestGiver', name: "Master Woodworker", npcType: 'WOODWORKING_TRAINER', x: 49000, y: 49500, questIds: [101, 104, 205] },
                 { type: 'CraftingStation', stationType: 'WOODWORKING_BENCH', x: 49000, y: 49600 },
-                { type: 'QuestGiver', name: "Thorin the Smith", npcType: 'BLACKSMITHING_TRAINER', x: 49100, y: 50500, questIds: [102, 201] },
+                { type: 'QuestGiver', name: "Thorin the Smith", npcType: 'BLACKSMITHING_TRAINER', x: 49100, y: 50500, questIds: [102, 201, 206] },
                 { type: 'CraftingStation', stationType: 'FORGE', x: 49100, y: 50600 },
-                { type: 'QuestGiver', name: "Alchemist Fiona", npcType: 'ALCHEMIST', x: 51000, y: 49500, questIds: [103, 202] },
+                { type: 'QuestGiver', name: "Alchemist Fiona", npcType: 'ALCHEMIST', x: 51000, y: 49500, questIds: [103, 202, 207] },
                 { type: 'CraftingStation', stationType: 'ALCHEMY_TABLE', x: 51000, y: 49600 },
                 { type: 'GenericNPC', npcType: 'QUARTERMASTER', x: 50500, y: 50500 },
                 { type: 'Portal', name: "To the Stonetalon Foothills", x: 50600, y: 50600, target: { x: 87000, y: 44900 } }
@@ -486,15 +549,15 @@ const GameData = {
     CRAFTING_STATIONS: {
         'WOODWORKING_BENCH': {
             name: 'Woodworking Bench', icon: '\uf6e3', color: '#8B4513',
-            recipes: ['chair', 'wooden_staff', 'wooden_shield', 'reinforced_staff', 'oak_shield', 'pickaxe', 'simple_wooden_bow', 'simple_wooden_arrow']
+            recipes: ['chair', 'wooden_staff', 'wooden_shield', 'reinforced_staff', 'oak_shield', 'pickaxe', 'simple_wooden_bow', 'simple_wooden_arrow', 'oak_longbow']
         },
         'FORGE': {
             name: 'Forge', icon: '\uf6e3', color: '#d2691e',
-            recipes: ['copper_bar', 'copper_shortsword', 'tin_bar', 'heavy_copper_armor']
+            recipes: ['copper_bar', 'copper_shortsword', 'tin_bar', 'heavy_copper_armor', 'tin_dagger', 'tin_scale_coif', 'tin_leggings']
         },
         'ALCHEMY_TABLE': {
             name: 'Alchemy Table', icon: '\uf5a7', color: '#9932cc',
-            recipes: ['weak_trolls_blood', 'minor_mana_potion', 'potion_of_swiftness']
+            recipes: ['weak_trolls_blood', 'minor_mana_potion', 'potion_of_swiftness', 'silverleaf_elixir', 'greater_healing_potion']
         }
     },
     PLAYER_HOUSE_DATA: {
@@ -2375,6 +2438,7 @@ class GenericNPC extends NPC {
         this.buys = type.buys;
         this.baseInteraction = type.interaction;
         this.profession = type.profession;
+        this.dialogue = type.dialogue;
         
         // --- NEW: Gold and Gold Regeneration Logic ---
         this.gold = type.startingGold || 0;
@@ -2399,12 +2463,28 @@ class GenericNPC extends NPC {
         } else if (this.interactType === 'crafting_trainer') {
             if (this.baseInteraction) {
                 this.baseInteraction(player);
+            } else {
+                const dialogue = this.dialogue;
+                if (dialogue) {
+                    const idleLines = dialogue.idle || [];
+                    const randomIdle = idleLines.length > 0 ? idleLines[Math.floor(Math.random() * idleLines.length)] : '';
+                    alert(`${dialogue.greeting || ''}\n\n${randomIdle}`);
+                } else {
+                    alert(`Hello, ${player.name}. I am ${this.name}.`);
+                }
             }
         } else {
             if (this.baseInteraction) {
                 this.baseInteraction(player);
             } else {
-                alert(`Hello, ${player.name}. I am ${this.name}.`);
+                const dialogue = this.dialogue;
+                if (dialogue) {
+                    const idleLines = dialogue.idle || [];
+                    const randomIdle = idleLines.length > 0 ? idleLines[Math.floor(Math.random() * idleLines.length)] : '';
+                    alert(`${dialogue.greeting || ''}\n\n${randomIdle}`);
+                } else {
+                    alert(`Hello, ${player.name}. I am ${this.name}.`);
+                }
             }
         }
     }
@@ -2709,7 +2789,9 @@ class QuestGiver extends NPC {
             for (const professionName of npcTypeData.professions) {
                 const profession = player.professions[professionName];
                 if (profession && profession.level === 0) {
-                    const doLearn = confirm(`Greetings. I can teach you the basics of ${professionName} for 5 silver. Would you like to learn?`);
+                    const dialogue = npcTypeData.dialogue;
+                    const greeting = dialogue ? dialogue.greeting : `Greetings, ${player.name}.`;
+                    const doLearn = confirm(`${greeting}\n\nI can teach you the basics of ${professionName} for 5 silver. Would you like to learn?`);
                     if (doLearn) {
                         if (player.gold >= 500) {
                             player.gold -= 500;
@@ -2734,18 +2816,26 @@ class QuestGiver extends NPC {
         const questId = completableQuestId || availableQuestId;
 
         if (!questId) {
-            if (!isAutomatic) { 
-                alert(`Hello, ${player.name}. I have no tasks for you at the moment.`);
+            if (!isAutomatic) {
+                const dialogue = npcTypeData ? npcTypeData.dialogue : null;
+                if (dialogue && dialogue.idle && dialogue.idle.length > 0) {
+                    const randomIdle = dialogue.idle[Math.floor(Math.random() * dialogue.idle.length)];
+                    alert(`${dialogue.greeting || ''}\n\n${randomIdle}`);
+                } else {
+                    alert(`Hello, ${player.name}. I have no tasks for you at the moment.`);
+                }
             }
             return;
         }
 
         const questData = GameData.QUESTS[questId];
         const playerQuestInstance = player.quests.find(q => q.id === questId);
+        const dialogue = npcTypeData ? npcTypeData.dialogue : null;
         
         if (completableQuestId) {
+            const completionText = dialogue && dialogue.complete ? dialogue.complete : `Quest Complete: ${questData.title}\nYou receive your rewards.`;
             if (!isAutomatic) {
-                alert(`Quest Complete: ${questData.title}\nYou receive your rewards.`);
+                alert(completionText);
             } else {
                 game.createFloatingText(`Quest Complete: ${questData.title}`, player.x, player.y - 60, 'gold');
             }
@@ -2764,16 +2854,21 @@ class QuestGiver extends NPC {
             }
             game.ui.updateAll(player);
         } else if (availableQuestId) {
-            const doAccept = isAutomatic || confirm(`Quest: ${questData.title}\n\n${questData.description}\n\nAccept quest?`);
+            const acceptText = dialogue && dialogue.accept ? dialogue.accept : `Quest: ${questData.title}\n\n${questData.description}`;
+            const doAccept = isAutomatic || confirm(`${acceptText}\n\nAccept quest?`);
             if (doAccept) {
                 player.addQuest(questId, this);
+                if (dialogue && dialogue.accepted) {
+                    alert(dialogue.accepted);
+                }
             }
         } else if (playerQuestInstance && !isAutomatic) {
+            const inProgressText = dialogue && dialogue.inProgress ? dialogue.inProgress : `You are currently on quest: ${playerQuestInstance.title}.`;
             const objectivesText = playerQuestInstance.progress.map(obj => {
                 const targetName = obj.type === 'craft' ? GameData.ITEMS[obj.itemId].name : obj.target;
                 return `- ${targetName}: ${obj.current}/${obj.count}`;
             }).join('\n');
-            alert(`You are currently on quest: ${playerQuestInstance.title}.\nProgress:\n${objectivesText}`);
+            alert(`${inProgressText}\n\nProgress:\n${objectivesText}`);
         }
     }
 
