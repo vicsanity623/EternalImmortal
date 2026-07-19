@@ -583,7 +583,9 @@ class Game {
         this.gameLoop(0);
     }
     saveGame(isAutoSave = false) {
-        if (!this.player || this.player.isDead || this.player.isGhost || !currentUser) return;
+        // Retrieve the authenticated user directly from Firebase instead of using the session key
+        const user = firebase.auth().currentUser;
+        if (!this.player || this.player.isDead || this.player.isGhost || !user) return;
         
         // This is a helper function to safely create an item object for saving.
         const createSafeItemObject = (item) => {
@@ -609,14 +611,12 @@ class Game {
                 isResting: this.player.isResting,
                 lastSaveTimestamp: Date.now(),
                 
-                // --- THE FINAL FIX IS HERE ---
                 inventory: this.player.inventory.map(createSafeItemObject),
                 equipment: Object.entries(this.player.equipment).reduce((acc, [slot, item]) => {
                     acc[slot] = createSafeItemObject(item);
                     return acc;
                 }, {}),
                 storage: this.player.storage.map(createSafeItemObject),
-                // --- END OF FINAL FIX ---
 
                 hotbar: this.player.hotbar.map(slot => { 
                     if (!slot) return null; 
@@ -643,7 +643,11 @@ class Game {
             }
         };
 
-        saveGameToCloud(currentUser.uid, saveData);
+        // Update local session storage so a page refresh immediately reflects the fresh data
+        sessionStorage.setItem('saveData', JSON.stringify(saveData));
+
+        // Save to your Firestore cloud collection
+        saveGameToCloud(user.uid, saveData);
         
         if (!isAutoSave) {
             this.createFloatingText("Game Saved!", this.player.x, this.player.y, 'gold');
