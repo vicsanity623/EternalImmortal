@@ -304,7 +304,7 @@
         /* Action button positioned on the bottom right of the HUD */
         #sprint-button {
             position: absolute;
-            bottom: 30px;      /* Distance from screen bottom */
+            bottom: 45px;      /* Distance from screen bottom */
             right: 30px;       /* Pinned to the right side of the screen */
             width: 70px;
             height: 70px;
@@ -431,7 +431,7 @@
             /* FIXED: Replaced left-side coordinates so the sprint button stays on the bottom-right relative to screen viewport */
             #sprint-button { 
                 right: 30px; 
-                bottom: 110px; /* Positions it ergonomically directly above your other action buttons */
+                bottom: 125px; /* Positions it ergonomically directly above your other action buttons */
                 width: 70px; 
                 height: 70px; 
                 font-size: 32px; 
