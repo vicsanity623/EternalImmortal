@@ -929,7 +929,8 @@ class Game {
             const sortedEntities = [...this.entities].sort((a, b) => b.y - a.y);
 
             for (const entity of sortedEntities) {
-                if (entity !== this.player && distance(clickWorldPos, entity) < entity.size / 2) {
+                const touchPadding = this.isMobile ? 20 : 0;
+                if (entity !== this.player && distance(clickWorldPos, entity) < (entity.size / 2) + touchPadding) {
                     
                     if (entity instanceof Enemy) {
                         if (entity === this.player.target && !entity.isDead) {
@@ -966,7 +967,7 @@ class Game {
         let nodeHovered = false;
         this.entities.forEach(entity => {
             if (entity instanceof ResourceNode) {
-                if (!nodeHovered && distance(mouseWorldPos, entity) < entity.size / 2) {
+                if (!nodeHovered && distance(mouseWorldPos, entity) < (entity.size / 2) + (game.isMobile ? 20 : 0)) {
                     entity.isHovered = true;
                     nodeHovered = true;
                 } else {

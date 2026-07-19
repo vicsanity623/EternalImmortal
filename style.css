@@ -443,6 +443,89 @@
             #minimap { width: 120px; height: 120px; transform: scale(0.9); transform-origin: top right; }
             .window { width: 90vw; height: 85vh; top: 50%; left: 50%; transform: translate(-50%, -50%); }
             .window-content { max-height: calc(85vh - 50px); }
+            
+            /* --- Mobile Touch Target Sizing --- */
+            .inventory-slot, .storage-slot {
+                width: 64px;
+                height: 64px;
+                font-size: 32px;
+            }
+            #inventory-grid, #storage-grid {
+                gap: 8px;
+            }
+            
+            .equipment-slot {
+                width: 56px;
+                height: 56px;
+                font-size: 28px;
+            }
+            
+            .action-slot {
+                width: 54px;
+                height: 54px;
+            }
+            
+            .close-btn {
+                padding: 10px 14px;
+                font-size: 20px;
+                min-width: 44px;
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .sys-button {
+                width: 44px;
+                height: 44px;
+                font-size: 18px;
+            }
+            
+            .vendor-item-slot, .crafting-recipe-slot {
+                width: 64px;
+                height: 64px;
+                font-size: 32px;
+            }
+            
+            .vendor-grid {
+                gap: 12px;
+            }
+            
+            .window-header {
+                padding: 12px;
+            }
+            
+            .window-header span {
+                font-size: 16px;
+            }
+            
+            .spellbook-slot {
+                width: 56px;
+                height: 56px;
+                font-size: 28px;
+            }
+            #spellbook-grid {
+                gap: 8px;
+            }
+            
+            .talent {
+                padding: 10px 8px;
+            }
+            
+            .quest-item {
+                padding: 12px 8px;
+            }
+            .auto-quest-btn {
+                padding: 10px 12px;
+                font-size: 14px;
+                min-width: 44px;
+                min-height: 44px;
+            }
+            
+            .craft-button {
+                padding: 12px;
+                font-size: 16px;
+            }
         }
         #quest-tracker {
             position: absolute;
