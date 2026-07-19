@@ -144,7 +144,7 @@
             display: none;
             flex-direction: column;
             pointer-events: all;
-            z-index: 100;
+            z-index: 2000;
         }
         .window-header { padding: 8px; background: var(--color-bg-light); cursor: move; display: flex; justify-content: space-between; align-items: center; }
         .window-header .close-btn { cursor: pointer; }
