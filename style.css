@@ -275,7 +275,7 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 50vw;       /* Covers 50% of the screen width */
+            width: 25vw;       /* Covers 50% of the screen width */
             height: 100vh;     /* Covers 100% of the screen height */
             display: none;     /* Managed dynamically by your JS device detection */
             pointer-events: all;
