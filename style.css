@@ -1,4 +1,4 @@
-        .action-slot i, .inventory-slot i {
+.action-slot i, .inventory-slot i {
             text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
             transition: transform 0.2s ease-out, text-shadow 0.2s ease-out;
             will-change: transform;
@@ -144,7 +144,7 @@
             display: none;
             flex-direction: column;
             pointer-events: all;
-            z-index: 100;
+            z-index: 2000;
         }
         .window-header { padding: 8px; background: var(--color-bg-light); cursor: move; display: flex; justify-content: space-between; align-items: center; }
         .window-header .close-btn { cursor: pointer; }
@@ -270,11 +270,61 @@
         #tooltip .stats { margin-top: 8px; font-size: 14px; }
         #tooltip .durability { color: #ff4500; }
         
-        #mobile-controls { position: absolute; bottom: 10px; left: 10px; width: 150px; height: 150px; display: none; pointer-events: all; }
-        #joystick-area { position: relative; width: 100%; height: 100%; background: transparent; border-radius: 50%; }
-        #joystick-thumb { position: absolute; width: 60px; height: 60px; background: rgba(120, 120, 120, 0.3); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); }
-        #sprint-button { position: absolute; bottom: -10px; right: -70px; width: 60px; height: 60px; background: rgba(200, 200, 50, 0.25); border: 2px solid rgba(200, 200, 50, 0.5); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 28px; color: #ffd700; pointer-events: all; touch-action: manipulation; }
-        #sprint-button.active { background: rgba(200, 200, 50, 0.5); border-color: #ffd700; }
+        /* Invisible joystick container covering the left half of the screen */
+        #mobile-controls {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 25vw;       /* Covers 50% of the screen width */
+            height: 100vh;     /* Covers 100% of the screen height */
+            display: none;     /* Managed dynamically by your JS device detection */
+            pointer-events: all;
+            z-index: 1000;
+        }
+        
+        #joystick-area {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+        }
+        
+        /* The thumb indicator - hidden until touched, then centered at your finger */
+        #joystick-thumb {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: rgba(120, 120, 120, 0.3); /* Adjust transparency or set to transparent if 100% invisible */
+            border-radius: 50%;
+            display: none; /* Kept hidden until touchstart */
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        
+        /* Action button positioned on the bottom right of the HUD */
+        #sprint-button {
+            position: absolute;
+            bottom: 45px;      /* Distance from screen bottom */
+            right: 30px;       /* Pinned to the right side of the screen */
+            width: 70px;
+            height: 70px;
+            background: rgba(200, 200, 50, 0.25);
+            border: 2px solid rgba(200, 200, 50, 0.5);
+            border-radius: 50%;
+            display: none;     /* Managed dynamically by your JS device detection */
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            color: #ffd700;
+            pointer-events: all;
+            touch-action: manipulation;
+            z-index: 1001;
+        }
+        
+        #sprint-button.active {
+            background: rgba(200, 200, 50, 0.5);
+            border-color: #ffd700;
+        }
         #system-menu { position: absolute; bottom: 20px; right: 20px; display: flex; pointer-events: all; gap: 2px; }
         .sys-button { width: 30px; height: 30px; background: var(--color-bg-light); border: 1px solid var(--color-border); cursor: pointer; display: flex; justify-content: center; align-items: center; }
         .sys-button:hover { background: var(--color-bg-medium); }
@@ -373,9 +423,20 @@
 
         @media (max-width: 900px) and (orientation: landscape) {
             #action-bar, #system-menu { display: none; }
-            #mobile-controls { width: 180px; height: 180px; }
+            
+            /* REMOVED: #mobile-controls fixed size overrides so full-screen touch remains intact */
+            
             #joystick-thumb { width: 70px; height: 70px; }
-            #sprint-button { right: -80px; bottom: -10px; width: 70px; height: 70px; font-size: 32px; }
+            
+            /* FIXED: Replaced left-side coordinates so the sprint button stays on the bottom-right relative to screen viewport */
+            #sprint-button { 
+                right: 30px; 
+                bottom: 125px; /* Positions it ergonomically directly above your other action buttons */
+                width: 70px; 
+                height: 70px; 
+                font-size: 32px; 
+            }
+            
             #mobile-action-buttons { display: flex; }
             .unit-frame { width: 200px; transform: scale(0.9); transform-origin: top left; }
             #target-frame { left: 200px; }

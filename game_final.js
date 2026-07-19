@@ -583,7 +583,9 @@ class Game {
         this.gameLoop(0);
     }
     saveGame(isAutoSave = false) {
-        if (!this.player || this.player.isDead || this.player.isGhost || !currentUser) return;
+        // Retrieve the authenticated user directly from Firebase instead of using the session key
+        const user = firebase.auth().currentUser;
+        if (!this.player || this.player.isDead || this.player.isGhost || !user) return;
         
         // This is a helper function to safely create an item object for saving.
         const createSafeItemObject = (item) => {
@@ -609,14 +611,12 @@ class Game {
                 isResting: this.player.isResting,
                 lastSaveTimestamp: Date.now(),
                 
-                // --- THE FINAL FIX IS HERE ---
                 inventory: this.player.inventory.map(createSafeItemObject),
                 equipment: Object.entries(this.player.equipment).reduce((acc, [slot, item]) => {
                     acc[slot] = createSafeItemObject(item);
                     return acc;
                 }, {}),
                 storage: this.player.storage.map(createSafeItemObject),
-                // --- END OF FINAL FIX ---
 
                 hotbar: this.player.hotbar.map(slot => { 
                     if (!slot) return null; 
@@ -643,7 +643,11 @@ class Game {
             }
         };
 
-        saveGameToCloud(currentUser.uid, saveData);
+        // Update local session storage so a page refresh immediately reflects the fresh data
+        sessionStorage.setItem('saveData', JSON.stringify(saveData));
+
+        // Save to your Firestore cloud collection
+        saveGameToCloud(user.uid, saveData);
         
         if (!isAutoSave) {
             this.createFloatingText("Game Saved!", this.player.x, this.player.y, 'gold');
@@ -936,7 +940,11 @@ class Game {
 
     createFloatingText(text, x, y, color, type = '') { this.ui.createFloatingText(text, x, y, color, this.camera, type); }
         setupUIInteractions() {
-        if (this.isMobile) $("#mobile-controls").style.display = "block";
+        if (this.isMobile) {
+            $("#mobile-controls").style.display = "block";
+            const sprintBtn = $("#sprint-button");
+            if (sprintBtn) sprintBtn.style.display = "flex";
+        }
         
         $$('.sys-button').forEach(btn => btn.addEventListener('click', () => { 
             const windowId = btn.dataset.window; 
@@ -2880,7 +2888,17 @@ const ParticleSystem = {
 };
 
 class InputHandler {
-    constructor(isMobile) { this.keys = {}; this.mouse = { x: 0, y: 0, clicked: false }; this.isMobile = isMobile; isMobile ? this.setupMobileControls() : this.setupDesktopControls(); }
+    constructor(isMobile) { 
+        this.keys = {}; 
+        this.mouse = { x: 0, y: 0, clicked: false }; 
+        this.isMobile = isMobile; 
+        
+        // Define joystickVector here so it always exists on both mobile and desktop
+        this.joystickVector = { x: 0, y: 0 }; 
+
+        isMobile ? this.setupMobileControls() : this.setupDesktopControls(); 
+    }
+
     setupDesktopControls() { 
         window.addEventListener('keydown', (e) => this.keys[e.key.toLowerCase()] = true); 
         window.addEventListener('keyup', (e) => this.keys[e.key.toLowerCase()] = false); 
@@ -2890,8 +2908,102 @@ class InputHandler {
         // --- FIX: Add this event listener to clear keys when the window regains focus ---
         window.addEventListener('focus', () => { this.keys = {}; });
     }
-    setupMobileControls() { const joystickArea = $('#joystick-area'); const joystickThumb = $('#joystick-thumb'); this.joystickVector = {x: 0, y: 0}; const handleTouch = (e) => { e.preventDefault(); const joystickRect = joystickArea.getBoundingClientRect(); const centerX = joystickRect.width / 2; const centerY = joystickRect.height / 2; const touch = e.touches[0]; let x = touch.clientX - joystickRect.left - centerX; let y = touch.clientY - joystickRect.top - centerY; const dist = Math.sqrt(x*x + y*y); const maxDist = centerX - joystickThumb.offsetWidth / 2; if (dist > maxDist) { x = (x / dist) * maxDist; y = (y / dist) * maxDist; } joystickThumb.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`; this.joystickVector = { x: x / maxDist, y: y / maxDist }; }; joystickArea.addEventListener('touchstart', handleTouch, { passive: false }); joystickArea.addEventListener('touchmove', handleTouch, { passive: false }); joystickArea.addEventListener('touchend', () => { joystickThumb.style.transform = `translate(-50%, -50%)`; this.joystickVector = { x: 0, y: 0 }; }); $('#game-canvas').addEventListener('touchstart', (e) => { const touch = e.touches[0]; if (touch.clientX > 200 && touch.clientY < window.innerHeight - 100) { this.mouse.x = touch.clientX; this.mouse.y = touch.clientY; this.mouse.clicked = true; } }); const sprintBtn = $('#sprint-button'); if (sprintBtn) { sprintBtn.addEventListener('touchstart', (e) => { e.preventDefault(); this.keys['shift'] = true; sprintBtn.classList.add('active'); }, { passive: false }); sprintBtn.addEventListener('touchend', (e) => { e.preventDefault(); this.keys['shift'] = false; sprintBtn.classList.remove('active'); }, { passive: false }); sprintBtn.addEventListener('touchcancel', (e) => { this.keys['shift'] = false; sprintBtn.classList.remove('active'); }); } }
-    getMoveVector() { if(this.isMobile) return this.joystickVector; let vector = { x: 0, y: 0 }; if (this.keys['w']) vector.y -= 1; if (this.keys['s']) vector.y += 1; if (this.keys['a']) vector.x -= 1; if (this.keys['d']) vector.x += 1; return vector; }
+
+    setupMobileControls() {
+        const joystickArea = $('#joystick-area');
+        const joystickThumb = $('#joystick-thumb');
+        
+        let startX = 0;
+        let startY = 0;
+        const maxDist = 50; // Maximum drag distance from start point (in pixels)
+    
+        const handleTouch = (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = joystickArea.getBoundingClientRect();
+            
+            if (e.type === 'touchstart') {
+                // Get coordinates relative to the joystick container's bounding area
+                startX = touch.clientX - rect.left;
+                startY = touch.clientY - rect.top;
+                
+                // Set thumb position exactly where the finger touched
+                joystickThumb.style.left = `${startX}px`;
+                joystickThumb.style.top = `${startY}px`;
+                joystickThumb.style.transform = `translate(-50%, -50%)`;
+                joystickThumb.style.display = 'block'; // Ensure thumb is visible when touched
+            }
+            
+            // Get current coordinate relative to the container
+            const currentX = touch.clientX - rect.left;
+            const currentY = touch.clientY - rect.top;
+
+            let dx = currentX - startX;
+            let dy = currentY - startY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist > maxDist) {
+                dx = (dx / dist) * maxDist;
+                dy = (dy / dist) * maxDist;
+            }
+            
+            joystickThumb.style.transform = `translate(-50%, -50%) translate(${dx}px, ${dy}px)`;
+            this.joystickVector = { x: dx / maxDist, y: dy / maxDist };
+        };
+    
+        joystickArea.addEventListener('touchstart', handleTouch, { passive: false });
+        joystickArea.addEventListener('touchmove', handleTouch, { passive: false });
+        
+        joystickArea.addEventListener('touchend', () => {
+            joystickThumb.style.display = 'none'; // Hide visual helper when finger lifts
+            this.joystickVector = { x: 0, y: 0 };
+        });
+    
+        joystickArea.addEventListener('touchcancel', () => {
+            joystickThumb.style.display = 'none';
+            this.joystickVector = { x: 0, y: 0 };
+        });
+    
+        $('#game-canvas').addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            if (touch.clientX > 200 && touch.clientY < window.innerHeight - 100) {
+                this.mouse.x = touch.clientX;
+                this.mouse.y = touch.clientY;
+                this.mouse.clicked = true;
+            }
+        });
+    
+        const sprintBtn = $('#sprint-button');
+        if (sprintBtn) {
+            sprintBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.keys['shift'] = true;
+                sprintBtn.classList.add('active');
+            }, { passive: false });
+            
+            sprintBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.keys['shift'] = false;
+                sprintBtn.classList.remove('active');
+            }, { passive: false });
+            
+            sprintBtn.addEventListener('touchcancel', (e) => {
+                this.keys['shift'] = false;
+                sprintBtn.classList.remove('active');
+            });
+        }
+    }
+
+    getMoveVector() { 
+        if (this.isMobile) return this.joystickVector; 
+        
+        let vector = { x: 0, y: 0 }; 
+        if (this.keys['w']) vector.y -= 1; 
+        if (this.keys['s']) vector.y += 1; 
+        if (this.keys['a']) vector.x -= 1; 
+        if (this.keys['d']) vector.x += 1; 
+        return vector; 
+    }
 }
 class UI {
     constructor(game) { 

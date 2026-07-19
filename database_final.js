@@ -6,8 +6,12 @@ export async function saveGameToCloud(userId, saveData) {
             console.error("No user ID provided for saving.");
             return;
         }
+        
+        // --- CRITICAL FIX: Sanitize the object to strip any accidental 'undefined' fields ---
+        const sanitizedData = JSON.parse(JSON.stringify(saveData));
+
         const userDocRef = db.collection('users').doc(userId);
-        await userDocRef.set({ gameData: saveData });
+        await userDocRef.set({ gameData: sanitizedData });
         console.log("Game saved to cloud successfully!");
     } catch (error) {
         console.error("Error saving game to cloud:", error);
@@ -27,7 +31,6 @@ export async function loadGameFromCloud(userId) {
         
         const data = docSnap.data();
 
-        // THE NEW METHOD: Check if data itself exists.
         if (data && data.gameData) { 
             console.log("Save data found in cloud!");
             return data.gameData;
