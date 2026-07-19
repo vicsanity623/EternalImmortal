@@ -936,7 +936,11 @@ class Game {
 
     createFloatingText(text, x, y, color, type = '') { this.ui.createFloatingText(text, x, y, color, this.camera, type); }
         setupUIInteractions() {
-        if (this.isMobile) $("#mobile-controls").style.display = "block";
+        if (this.isMobile) {
+            $("#mobile-controls").style.display = "block";
+            const sprintBtn = $("#sprint-button");
+            if (sprintBtn) sprintBtn.style.display = "flex";
+        }
         
         $$('.sys-button').forEach(btn => btn.addEventListener('click', () => { 
             const windowId = btn.dataset.window; 
