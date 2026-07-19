@@ -1,4 +1,4 @@
-        .action-slot i, .inventory-slot i {
+.action-slot i, .inventory-slot i {
             text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
             transition: transform 0.2s ease-out, text-shadow 0.2s ease-out;
             will-change: transform;
@@ -423,9 +423,20 @@
 
         @media (max-width: 900px) and (orientation: landscape) {
             #action-bar, #system-menu { display: none; }
-            #mobile-controls { width: 180px; height: 180px; }
+            
+            /* REMOVED: #mobile-controls fixed size overrides so full-screen touch remains intact */
+            
             #joystick-thumb { width: 70px; height: 70px; }
-            #sprint-button { right: -80px; bottom: -10px; width: 70px; height: 70px; font-size: 32px; }
+            
+            /* FIXED: Replaced left-side coordinates so the sprint button stays on the bottom-right relative to screen viewport */
+            #sprint-button { 
+                right: 30px; 
+                bottom: 110px; /* Positions it ergonomically directly above your other action buttons */
+                width: 70px; 
+                height: 70px; 
+                font-size: 32px; 
+            }
+            
             #mobile-action-buttons { display: flex; }
             .unit-frame { width: 200px; transform: scale(0.9); transform-origin: top left; }
             #target-frame { left: 200px; }
