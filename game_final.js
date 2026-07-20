@@ -1057,6 +1057,33 @@ class Game {
                 this.ui.tooltip.style.display = 'none';
             }
         });
+
+        const slideCloseBtn = $('#item-slide-panel .slide-panel-close');
+        if (slideCloseBtn) {
+            slideCloseBtn.addEventListener('click', () => this.ui.closeItemSlidePanel());
+        }
+        const invBackdrop = $('#inventory-backdrop');
+        if (invBackdrop) {
+            invBackdrop.addEventListener('click', () => this.ui.closeItemSlidePanel());
+        }
+
+        if (this.isMobile) {
+            const hud = $('#hud');
+            hud.addEventListener('click', (e) => {
+                const activeWindows = $$('.window').forEach(win => {
+                    if (win.style.display === 'flex' && !win.contains(e.target) && !e.target.closest('.sys-button')) {
+                        win.style.display = 'none';
+                    }
+                });
+            });
+            hud.addEventListener('touchstart', (e) => {
+                const activeWindows = $$('.window').forEach(win => {
+                    if (win.style.display === 'flex' && !win.contains(e.target) && !e.target.closest('.sys-button') && !e.target.closest('#item-slide-panel') && !e.target.closest('#inventory-backdrop')) {
+                        win.style.display = 'none';
+                    }
+                });
+            });
+        }
     }
 }
 
@@ -3698,8 +3725,58 @@ class UI {
             statsCol.appendChild(petPanel);
         }
     }
-    updateInventory(player) { const grid = $('#inventory-grid'); grid.innerHTML = ''; player.inventory.forEach((item, index) => { const slot = document.createElement('div'); slot.className = 'inventory-slot'; slot.dataset.index = index; slot.dataset.source = 'inventory'; if (item) { slot.innerHTML = `<i class="fas ${item.icon} quality-${item.quality}"></i>`; if(item.stackable && item.quantity > 1) slot.innerHTML += `<div class="item-count">${item.quantity}</div>`; slot.dataset.itemId = item.id; slot.draggable = true; slot.addEventListener('click', (e) => { const currentVendor = game.entities.find(entity => entity.isTargeted && entity.interactType === 'vendor'); if (currentVendor) { this.sellItemFromInventory(player, item, index, currentVendor); } }); } grid.appendChild(slot); }); $('#currency').innerHTML = UI.formatCurrency(player.gold, true); }
+    updateInventory(player) { const grid = $('#inventory-grid'); grid.innerHTML = ''; player.inventory.forEach((item, index) => { const slot = document.createElement('div'); slot.className = 'inventory-slot'; slot.dataset.index = index; slot.dataset.source = 'inventory'; if (item) { slot.innerHTML = `<i class="fas ${item.icon} quality-${item.quality}"></i>`; if(item.stackable && item.quantity > 1) slot.innerHTML += `<div class="item-count">${item.quantity}</div>`; slot.dataset.itemId = item.id; slot.draggable = true; slot.addEventListener('click', (e) => { const currentVendor = game.entities.find(entity => entity.isTargeted && entity.interactType === 'vendor'); if (currentVendor) { this.sellItemFromInventory(player, item, index, currentVendor); } else if (game && game.isMobile) { this.openItemSlidePanel(player, item, index); } }); } grid.appendChild(slot); }); $('#currency').innerHTML = UI.formatCurrency(player.gold, true); }
     static formatCurrency(amount, useIcons = false) { const gold = Math.floor(amount / 10000); const silver = Math.floor((amount % 10000) / 100); const copper = amount % 100; if(useIcons) { return `<div class="currency-item">${gold} <div class="currency-icon gold"></div></div> <div class="currency-item">${silver} <div class="currency-icon silver"></div></div> <div class="currency-item">${copper} <div class="currency-icon copper"></div></div>`; } return `${gold}g ${silver}s ${copper}c`; }
+    openItemSlidePanel(player, item, index) {
+        const panel = $('#item-slide-panel');
+        const backdrop = $('#inventory-backdrop');
+        const iconEl = $('#slide-panel-icon');
+        const nameEl = $('#slide-panel-name');
+        const descEl = $('#slide-panel-description');
+        const statsEl = $('#slide-panel-stats');
+        const actionsEl = $('#slide-panel-actions');
+        iconEl.innerHTML = `<i class="fas ${item.icon} quality-${item.quality}" style="font-size:48px;"></i>`;
+        nameEl.innerHTML = `<span class="quality-${item.quality}">${item.name}</span>`;
+        let info = item.slot ? `Slot: ${item.slot}` : '';
+        if (item.description) info += `<br>${item.description}`;
+        descEl.innerHTML = info;
+        let statsHtml = '';
+        if (item.weaponDamage) statsHtml += `<div>${item.weaponDamage.min} - ${item.weaponDamage.max} Damage</div>`;
+        if (item.stats) for (const s in item.stats) statsHtml += `<div style="color:lightgreen">+${item.stats[s]} ${s}</div>`;
+        if (item.durability !== undefined) statsHtml += `<div style="color:#ff4500">Durability: ${item.durability}/${item.maxDurability}</div>`;
+        if (item.sellPrice) statsHtml += `<div style="color:var(--color-gold)">Sell Price: ${UI.formatCurrency(item.sellPrice)}</div>`;
+        statsEl.innerHTML = statsHtml;
+        actionsEl.innerHTML = '';
+        if (item.slot === 'consumable' && item.onUse) {
+            const useBtn = document.createElement('button');
+            useBtn.className = 'slide-panel-btn btn-use';
+            useBtn.textContent = 'Use';
+            useBtn.addEventListener('click', (e) => { e.stopPropagation(); item.onUse(player); item.quantity--; if(item.quantity <= 0) { const invIdx = player.inventory.findIndex(i => i === item); if (invIdx > -1) player.inventory[invIdx] = null; player.hotbar.forEach((h, hi) => { if (h && h.type === 'item' && h.ref === item) player.hotbar[hi] = null; }); } game.ui.updateAll(player); this.closeItemSlidePanel(); });
+            actionsEl.appendChild(useBtn);
+        }
+        if (item.slot && item.slot !== 'material' && item.slot !== 'consumable' && player.equipment.hasOwnProperty(item.slot)) {
+            const equipBtn = document.createElement('button');
+            equipBtn.className = 'slide-panel-btn btn-equip';
+            equipBtn.textContent = 'Equip';
+            equipBtn.addEventListener('click', (e) => { e.stopPropagation(); player.equipItem(index); this.closeItemSlidePanel(); });
+            actionsEl.appendChild(equipBtn);
+        }
+        if (item.sellPrice) {
+            const sellBtn = document.createElement('button');
+            sellBtn.className = 'slide-panel-btn btn-sell';
+            sellBtn.textContent = 'Sell';
+            sellBtn.addEventListener('click', (e) => { e.stopPropagation(); const vendor = game.entities.find(ent => ent.isTargeted && ent.interactType === 'vendor'); if (vendor && vendor.buys.includes(item.slot)) { this.sellItemFromInventory(player, item, index, vendor); this.closeItemSlidePanel(); } else { game.createFloatingText("Visit a vendor to sell items.", player.x, player.y, 'yellow'); } });
+            actionsEl.appendChild(sellBtn);
+        }
+        panel.classList.add('open');
+        backdrop.style.display = 'block';
+    }
+    closeItemSlidePanel() {
+        const panel = $('#item-slide-panel');
+        const backdrop = $('#inventory-backdrop');
+        panel.classList.remove('open');
+        backdrop.style.display = 'none';
+    }
     updateQuestLog(player = this.game.player) {
         const content = $('#quest-log-content'); content.innerHTML = ''; if (player.quests.length === 0) { content.innerHTML = 'You have no active quests.'; }
         player.quests.forEach(quest => { const item = document.createElement('div'); item.className = 'quest-item'; const details = document.createElement('div'); let objectivesHtml = ''; quest.progress.forEach(obj => { if (obj.type === 'kill') { objectivesHtml += `<div class="quest-objective">- ${obj.target} slain: ${obj.current} / ${obj.count}</div>`; } else if (obj.type === 'gather') { objectivesHtml += `<div class="quest-objective">- ${obj.target} gathered: ${player.inventory.filter(i => i && i.name.toUpperCase() === obj.target).reduce((sum, i) => sum + i.quantity, 0)} / ${obj.count}</div>`; } }); details.innerHTML = `<div class="quest-title">${quest.title}</div>${objectivesHtml}`; const button = document.createElement('button'); button.className = 'auto-quest-btn'; if (player.isAutoQuesting && player.autoQuest && player.autoQuest.id === quest.id) { button.textContent = 'Stop'; button.classList.add('active'); } else { button.textContent = 'Auto'; } button.addEventListener('click', (e) => { e.stopPropagation(); player.toggleAutoQuest(quest); }); item.appendChild(details); item.appendChild(button); content.appendChild(item); });
