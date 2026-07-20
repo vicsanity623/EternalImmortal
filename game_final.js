@@ -1014,7 +1014,14 @@ class Game {
             const windowId = btn.dataset.window; 
             if (windowId) { 
                 const win = $(`#${windowId}`); 
-                win.style.display = win.style.display === 'flex' ? 'none' : 'flex'; 
+                const willShow = win.style.display !== 'flex';
+                win.style.display = willShow ? 'flex' : 'none'; 
+                if (willShow && this.isMobile) {
+                    const rect = win.getBoundingClientRect();
+                    win.style.top = Math.max(0, ((window.innerHeight - rect.height) / 2)) + "px";
+                    win.style.left = Math.max(0, ((window.innerWidth - rect.width) / 2)) + "px";
+                    win.dataset.dragCentered = "1";
+                }
                 this.ui.updateAll(this.player); 
             } 
         }));
@@ -1038,7 +1045,7 @@ class Game {
         }));
 
         $$('.window').forEach(win => this.ui.makeDraggable(win));
-        window.addEventListener('keydown', (e) => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; const keyMap = {c: '#character-window', i: '#inventory-window', l: '#quest-log-window', n: '#talent-window', p: '#spellbook-window', u: '#reputation-window', m: '#map-window'}; if(keyMap[e.key.toLowerCase()]){ const win = $(keyMap[e.key.toLowerCase()]); win.style.display = win.style.display === 'flex' ? 'none' : 'flex'; this.ui.updateAll(this.player); } });
+        window.addEventListener('keydown', (e) => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; const keyMap = {c: '#character-window', i: '#inventory-window', l: '#quest-log-window', n: '#talent-window', p: '#spellbook-window', u: '#reputation-window', m: '#map-window'}; if(keyMap[e.key.toLowerCase()]){ const win = $(keyMap[e.key.toLowerCase()]); const willShow = win.style.display !== 'flex'; win.style.display = willShow ? 'flex' : 'none'; if (willShow && this.isMobile) { const rect = win.getBoundingClientRect(); win.style.top = Math.max(0, ((window.innerHeight - rect.height) / 2)) + "px"; win.style.left = Math.max(0, ((window.innerWidth - rect.width) / 2)) + "px"; win.dataset.dragCentered = "1"; } this.ui.updateAll(this.player); } });
         $('#release-spirit-button').addEventListener('click', () => this.player.releaseSpirit());
         
         window.addEventListener('mouseleave', () => { 
@@ -3128,7 +3135,14 @@ class UI {
     // --- All UI Methods Must Be Inside This Class ---
 
     openStorageWindow(player) {
-        $('#storage-window').style.display = 'flex';
+        const win = $('#storage-window');
+        win.style.display = 'flex';
+        if (game && game.isMobile) {
+            const rect = win.getBoundingClientRect();
+            win.style.top = Math.max(0, ((window.innerHeight - rect.height) / 2)) + "px";
+            win.style.left = Math.max(0, ((window.innerWidth - rect.width) / 2)) + "px";
+            win.dataset.dragCentered = "1";
+        }
         this.updateStorage(player);
     }
 
@@ -3785,7 +3799,45 @@ class UI {
             if (slot) this.tooltip.style.display = 'none';
         });
     }
-    makeDraggable(element) { let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0; const header = element.querySelector('.window-header'); const dragMouseDown = (e) => { e.preventDefault(); pos3 = e.clientX; pos4 = e.clientY; document.onmouseup = closeDragElement; document.onmousemove = elementDrag; }; const elementDrag = (e) => { e.preventDefault(); pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY; pos3 = e.clientX; pos4 = e.clientY; element.style.top = (element.offsetTop - pos2) + "px"; element.style.left = (element.offsetLeft - pos1) + "px"; }; const closeDragElement = () => { document.onmouseup = null; document.onmousemove = null; }; if (header) header.onmousedown = dragMouseDown; else element.onmousedown = dragMouseDown; }
+    makeDraggable(element) {
+        let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+        const header = element.querySelector('.window-header');
+        const getX = (e) => e.clientX !== undefined ? e.clientX : (e.touches ? e.touches[0].clientX : 0);
+        const getY = (e) => e.clientY !== undefined ? e.clientY : (e.touches ? e.touches[0].clientY : 0);
+        const dragStart = (e) => {
+            e.preventDefault();
+            pos3 = getX(e);
+            pos4 = getY(e);
+            document.onmouseup = closeDrag;
+            document.onmousemove = dragMove;
+            document.ontouchend = closeDrag;
+            document.ontouchmove = dragMove;
+            if (game && game.isMobile && !element.dataset.dragCentered) {
+                const rect = element.getBoundingClientRect();
+                element.style.top = ((window.innerHeight - rect.height) / 2) + "px";
+                element.style.left = ((window.innerWidth - rect.width) / 2) + "px";
+                element.dataset.dragCentered = "1";
+            }
+        };
+        const dragMove = (e) => {
+            if (e.cancelable) e.preventDefault();
+            pos1 = pos3 - getX(e);
+            pos2 = pos4 - getY(e);
+            pos3 = getX(e);
+            pos4 = getY(e);
+            element.style.top = (element.offsetTop - pos2) + "px";
+            element.style.left = (element.offsetLeft - pos1) + "px";
+        };
+        const closeDrag = () => {
+            document.onmouseup = null;
+            document.onmousemove = null;
+            document.ontouchend = null;
+            document.ontouchmove = null;
+        };
+        const target = header || element;
+        target.onmousedown = dragStart;
+        target.ontouchstart = dragStart;
+    }
     showDeathScreen() { $('#death-screen').style.display = 'flex'; }
     hideDeathScreen() { $('#death-screen').style.display = 'none'; }
     updateTalentWindow(player) { 
@@ -3811,7 +3863,18 @@ class UI {
     updateSpellbook(player) { const grid = $('#spellbook-grid'); grid.innerHTML = ''; player.spellbook.forEach((ability, index) => { const slot = document.createElement('div'); slot.className = 'spellbook-slot'; slot.dataset.index = index; slot.dataset.source = 'spellbook'; slot.draggable = true; slot.innerHTML = `<i class="fas ${ability.icon}"></i>`; grid.appendChild(slot); }); if (player.recipes.length > 0) { const recipeSection = document.createElement('div'); recipeSection.innerHTML = '<hr><h3>Recipes</h3><div id="spellbook-recipes-grid" class="spellbook-grid"></div>'; grid.appendChild(recipeSection); const recipeGrid = $('#spellbook-recipes-grid'); player.recipes.forEach((recipe, index) => { const slot = document.createElement('div'); slot.className = 'spellbook-slot'; slot.dataset.index = index; slot.dataset.source = 'recipe'; slot.draggable = false; slot.innerHTML = `<i class="fas ${recipe.icon}"></i>`; recipeGrid.appendChild(slot); }); } }
     updateReputationWindow(player) { const content = $('#reputation-content'); content.innerHTML = ''; for (const factionId in GameData.FACTIONS) { const faction = GameData.FACTIONS[factionId]; const playerRep = player.reputation[factionId] || faction.base; let currentTier = faction.tiers[0]; for (let i = 0; i < faction.tiers.length; i++) { if (playerRep >= faction.values[i]) { currentTier = faction.tiers[i]; } else { break; } } let nextTierValue = ''; const currentTierIndex = faction.tiers.indexOf(currentTier); if (currentTierIndex < faction.tiers.length - 1) { nextTierValue = ` / ${faction.values[currentTierIndex + 1]}`; } content.innerHTML += `<div class="reputation-line"><span>${faction.name} (${currentTier})</span><span>${playerRep}${nextTierValue}</span></div>`; } }
     updateBuffs(character, containerId) { const container = $(`#${containerId}`); container.innerHTML = ''; if(!character || !character.buffs) return; character.buffs.forEach(buff => { const div = document.createElement('div'); div.className = 'buff-icon'; if (buff.isDebuff) div.classList.add('debuff'); div.dataset.buffId = buff.id; div.innerHTML = `<i class="fas ${buff.icon}"></i><div class="buff-duration">${(buff.duration/1000).toFixed(0)}</div>`; container.appendChild(div); }); }
-    openVendorWindow(player, vendor) { this.needsVendorUpdate = true; $('#vendor-window').style.display = 'flex'; player.setTarget(vendor); }
+    openVendorWindow(player, vendor) {
+        this.needsVendorUpdate = true;
+        const win = $('#vendor-window');
+        win.style.display = 'flex';
+        if (game && game.isMobile) {
+            const rect = win.getBoundingClientRect();
+            win.style.top = Math.max(0, ((window.innerHeight - rect.height) / 2)) + "px";
+            win.style.left = Math.max(0, ((window.innerWidth - rect.width) / 2)) + "px";
+            win.dataset.dragCentered = "1";
+        }
+        player.setTarget(vendor);
+    }
     sellItemFromInventory(player, item, index, vendor) {
         if (!item || !item.sellPrice || !vendor.buys.includes(item.slot)) {
             game.createFloatingText("Vendor doesn't buy that!", player.x, player.y, 'red');
@@ -3877,7 +3940,14 @@ class UI {
         this.updateAll(player); 
     }
     openCraftingWindow(player, station) {
-        $('#crafting-window').style.display = 'flex';
+        const win = $('#crafting-window');
+        win.style.display = 'flex';
+        if (game && game.isMobile) {
+            const rect = win.getBoundingClientRect();
+            win.style.top = Math.max(0, ((window.innerHeight - rect.height) / 2)) + "px";
+            win.style.left = Math.max(0, ((window.innerWidth - rect.width) / 2)) + "px";
+            win.dataset.dragCentered = "1";
+        }
         this.updateCraftingWindow(player, station);
         player.setTarget(station);
         this.activeCraftingStation = station;
