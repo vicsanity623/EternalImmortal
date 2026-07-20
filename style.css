@@ -289,9 +289,12 @@
         #stats-column { flex-grow: 1; }
 
         #inventory-grid, #storage-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
-        .inventory-slot, .storage-slot { width: 60px; height: 60px; background: var(--color-bg-dark); border: 1px solid var(--color-border); display: flex; justify-content: center; align-items: center; font-size: 28px; position: relative; }
+        .inventory-slot, .storage-slot { width: 60px; height: 60px; background: var(--color-bg-dark); border: 1px solid var(--color-border); display: flex; justify-content: center; align-items: center; font-size: 28px; position: relative; border-radius: 6px; transition: border-color 0.2s, box-shadow 0.2s; }
         .inventory-slot[draggable="true"], .storage-slot[draggable="true"] { cursor: grab; }
-        .inventory-slot.drag-over, .storage-slot.drag-over { border-color: gold; box-shadow: 0 0 5px gold; }
+        .inventory-slot.drag-over, .storage-slot.drag-over { border-color: gold; box-shadow: 0 0 8px gold; }
+        .inventory-slot:has(.quality-magic) { border-color: var(--color-text-magic); box-shadow: 0 0 6px rgba(135, 206, 235, 0.3); }
+        .inventory-slot:has(.quality-rare) { border-color: var(--color-text-rare); box-shadow: 0 0 10px rgba(0, 112, 221, 0.4); }
+        .inventory-slot:has(.quality-epic) { border-color: var(--color-text-epic); box-shadow: 0 0 14px rgba(163, 53, 238, 0.5); animation: epic-slot-glow 2s infinite alternate ease-in-out; }
         .item-count { position: absolute; bottom: 2px; right: 2px; font-size: 12px; text-shadow: 1px 1px 1px black; }
         .quality-common { color: var(--color-text); }
         .quality-magic { color: var(--color-text-magic); }
@@ -324,12 +327,14 @@
         .stat-line .stat-label i.icon-armor { color: #c0c0c0; }
         .stat-line .stat-value { color: var(--color-text); font-weight: bold; }
         
-        .currency-container { display: flex; justify-content: flex-end; align-items: center; gap: 5px; font-size: 14px; }
-        .currency-item { display: flex; align-items: center; gap: 2px; }
-        .currency-icon { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #333; }
-        .gold { background-color: var(--color-gold); }
-        .silver { background-color: var(--color-silver); }
-        .copper { background-color: var(--color-copper); }
+        #inventory-window .window-content { background: linear-gradient(135deg, var(--color-bg-dark) 0%, var(--color-bg-medium) 100%); border-radius: 0 0 5px 5px; }
+        #currency { padding: 8px 4px; border-top: 1px solid var(--color-border); background: rgba(0,0,0,0.2); margin-top: 8px; border-radius: 0 0 4px 4px; }
+        .currency-container { display: flex; justify-content: flex-end; align-items: center; gap: 8px; font-size: 14px; padding: 2px 6px; }
+        .currency-item { display: flex; align-items: center; gap: 4px; }
+        .currency-icon { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #555; box-shadow: 0 0 3px rgba(0,0,0,0.5); }
+        .gold { background: radial-gradient(circle at 30% 30%, #fff7a0, var(--color-gold)); }
+        .silver { background: radial-gradient(circle at 30% 30%, #f0f0f0, var(--color-silver)); }
+        .copper { background: radial-gradient(circle at 30% 30%, #d4956a, var(--color-copper)); }
 
         .quest-item { padding: 8px; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; }
         .quest-item > div { flex-grow: 1; }
@@ -478,6 +483,48 @@
         .craft-button:disabled { opacity: 0.5; cursor: not-allowed; }
         .craft-button:not(:disabled):hover { background-color: var(--color-bg-medium); }
 
+
+        #inventory-backdrop {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.3); display: none; z-index: 1999;
+            pointer-events: all;
+        }
+        #item-slide-panel {
+            position: absolute; right: -320px; top: 0; width: 300px; height: 100%;
+            background: var(--color-bg-medium); border-left: 2px solid var(--color-border);
+            box-shadow: -4px 0 15px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column;
+            transition: right 0.25s ease-out;
+            z-index: 3000; pointer-events: all;
+            padding: 12px; box-sizing: border-box;
+            overflow-y: auto;
+        }
+        #item-slide-panel.open { right: 0; }
+        #item-slide-panel .slide-panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--color-border); padding-bottom: 8px; margin-bottom: 10px;
+        }
+        #item-slide-panel .slide-panel-header span { font-size: 16px; font-weight: bold; }
+        #item-slide-panel .slide-panel-close {
+            cursor: pointer; min-width: 36px; min-height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            background: none; border: none; color: var(--color-text-muted); font-size: 20px;
+        }
+        #item-slide-panel .slide-panel-icon { font-size: 48px; text-align: center; margin: 10px 0; }
+        #item-slide-panel .slide-panel-name { font-size: 18px; text-align: center; margin-bottom: 6px; }
+        #item-slide-panel .slide-panel-description { font-size: 14px; color: var(--color-text-muted); text-align: center; margin-bottom: 10px; }
+        #item-slide-panel .slide-panel-stats { font-size: 14px; margin-bottom: 10px; }
+        #item-slide-panel .slide-panel-stats div { padding: 3px 0; }
+        #item-slide-panel .slide-panel-actions { display: flex; flex-direction: column; gap: 6px; margin-top: auto; padding-top: 10px; }
+        .slide-panel-btn {
+            width: 100%; padding: 12px; font-size: 15px; border: 1px solid var(--color-border);
+            background: var(--color-bg-light); color: var(--color-text); cursor: pointer;
+            border-radius: 4px; transition: background 0.2s;
+        }
+        .slide-panel-btn:hover { background: var(--color-bg-dark); border-color: #fff; }
+        .slide-panel-btn.btn-use { border-color: var(--color-mana); color: var(--color-mana); }
+        .slide-panel-btn.btn-equip { border-color: var(--color-text-rare); color: var(--color-text-rare); }
+        .slide-panel-btn.btn-sell { border-color: var(--color-gold); color: var(--color-gold); }
 
         #death-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.75); display: none; justify-content: center; align-items: center; flex-direction: column; color: #dc3545; text-align: center; font-size: 3em; text-shadow: 2px 2px 4px black; pointer-events: all; z-index: 20000; }
         #res-sickness-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(100, 0, 0, 0.2); pointer-events: none; z-index: 19999; display: none; }
@@ -642,6 +689,11 @@
             .crafting-recipe-cost { font-size: 9px; }
             .craft-button { padding: 8px; font-size: 13px; }
             #crafting-materials-display { font-size: 12px; }
+
+            #item-slide-panel { width: 75vw; max-width: 320px; }
+            #item-slide-panel .slide-panel-icon i { font-size: 36px !important; }
+            #item-slide-panel .slide-panel-name { font-size: 16px; }
+            .slide-panel-btn { padding: 14px; font-size: 16px; min-height: 44px; }
         }
         #quest-tracker {
             position: absolute;
