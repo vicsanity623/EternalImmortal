@@ -172,7 +172,7 @@
         #xp-bar { position: relative; bottom: 0; left: 0; transform: none; width: 80vw; max-width: 544px; height: 8px; background-color: rgba(0,0,0,0.5); border: 1px solid var(--color-border); pointer-events: none; display: flex; }
         #minimap { position: absolute; top: 20px; right: 20px; width: 150px; height: 150px; border-radius: 50%; border: 3px solid var(--color-border); background-color: var(--color-bg-dark); overflow: hidden; pointer-events: all; }
         #minimap-canvas { width: 100%; height: 100%; }
-        #character-window { top: 150px; left: 100px; width: 450px; }
+        #character-window { top: 150px; left: 100px; width: 450px; max-width: 95vw; }
         #inventory-window { top: 150px; left: 500px; }
         #storage-window { top: 150px; left: 860px; }
         #quest-log-window { top: 100px; right: 200px; }
@@ -441,7 +441,7 @@
             .unit-frame { width: 200px; transform: scale(0.9); transform-origin: top left; }
             #target-frame { left: 200px; }
             #minimap { width: 120px; height: 120px; transform: scale(0.9); transform-origin: top right; }
-            .window { width: 90vw; height: 85vh; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+            .window { width: 90vw; height: 85vh; }
             .window-content { max-height: calc(85vh - 50px); }
             
             /* --- Mobile Touch Target Sizing --- */
@@ -526,6 +526,51 @@
                 padding: 12px;
                 font-size: 16px;
             }
+            
+            /* --- Compact Window Layouts for Mobile Landscape --- */
+            #spellbook-window .window-content { padding: 6px; }
+            #spellbook-grid { gap: 3px; }
+            #spellbook-grid .spellbook-slot { width: 44px; height: 44px; font-size: 20px; }
+            
+            #talent-window .window-content { padding: 6px; }
+            #talent-points-display { font-size: 14px; margin-bottom: 6px; }
+            .talent-tree { gap: 4px; }
+            .talent { padding: 4px; }
+            .talent-icon { font-size: 20px; }
+            .talent-name { font-size: 10px; }
+            .talent-rank { font-size: 10px; }
+            
+            #storage-window .window-content { padding: 6px; }
+            #storage-grid .storage-slot { width: 50px; height: 50px; font-size: 24px; }
+            
+            #map-window { width: 94vw; height: 75vh; }
+            
+            #character-window { width: 88vw; }
+            #character-sheet-container { flex-direction: column; gap: 4px; }
+            #equipment-slots { flex-direction: row; flex-wrap: wrap; gap: 3px; }
+            .equipment-slot { width: 44px; height: 44px; font-size: 20px; margin-bottom: 14px; }
+            .stat-line { font-size: 12px; padding: 2px 0; }
+            .profession-line { margin-bottom: 4px; }
+            
+            #quest-log-window .window-content { padding: 6px; }
+            .quest-item { padding: 6px 4px; font-size: 13px; }
+            .quest-title { font-size: 14px; }
+            .quest-objective { font-size: 12px; padding-left: 8px; }
+            .auto-quest-btn { padding: 6px 8px; font-size: 12px; min-width: 40px; min-height: 36px; }
+            
+            #reputation-window .window-content { padding: 6px; }
+            .reputation-line { font-size: 12px; padding: 3px; }
+            .rep-bar-container { width: 80px; height: 12px; }
+            
+            #vendor-window .window-content,
+            #crafting-window .window-content { padding: 6px; }
+            .vendor-section, .crafting-section { padding: 4px; }
+            .vendor-section h3, .crafting-section h3 { font-size: 14px; }
+            .vendor-item-slot, .crafting-recipe-slot { width: 50px; height: 50px; font-size: 24px; }
+            .vendor-item-price { font-size: 10px; }
+            .crafting-recipe-cost { font-size: 9px; }
+            .craft-button { padding: 8px; font-size: 13px; }
+            #crafting-materials-display { font-size: 12px; }
         }
         #quest-tracker {
             position: absolute;
