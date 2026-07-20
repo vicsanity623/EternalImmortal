@@ -3662,13 +3662,13 @@ class UI {
         equipCol.appendChild(petSlot);
 
         const statsCol = $('#stats-column');
-        let statsHtml = `<div class="stat-line"><span>Health</span><span>${Math.ceil(player.stats.health)} / ${player.stats.maxHealth}</span></div>`;
-        if (player.race === 'Elf') statsHtml += `<div class="stat-line"><span>Mana</span><span>${Math.ceil(player.stats.mana)} / ${player.stats.maxMana}</span></div>`;
-        statsHtml += `<hr><div class="stat-line"><span>Strength</span><span>${Math.floor(player.stats.strength)}</span></div> <div class="stat-line"><span>Agility</span><span>${Math.floor(player.stats.agility)}</span></div> <div class="stat-line"><span>Stamina</span><span>${Math.floor(player.stats.stamina)}</span></div>`;
-        if (player.race === 'Elf') statsHtml += `<div class="stat-line"><span>Intellect</span><span>${Math.floor(player.stats.intellect)}</span></div>`;
-        statsHtml += `<div class="stat-line"><span>Spirit</span><span>${Math.floor(player.stats.spirit)}</span></div><hr> <div class="stat-line"><span>Attack Power</span><span>${player.stats.attackPower.toFixed(1)}</span></div> <div class="stat-line"><span>Crit Chance</span><span>${(player.stats.critChance * 100).toFixed(2)}%</span></div> <div class="stat-line"><span>Dodge Chance</span><span>${(player.stats.dodgeChance * 100).toFixed(2)}%</span></div> <div class="stat-line"><span>Armor</span><span>${player.stats.armor}</span></div>`;
+        let statsHtml = `<div class="stat-line"><span class="stat-label"><i class="fas fa-heart-pulse icon-health"></i>Health</span><span class="stat-value">${Math.ceil(player.stats.health)} / ${player.stats.maxHealth}</span></div>`;
+        if (player.race === 'Elf') statsHtml += `<div class="stat-line"><span class="stat-label"><i class="fas fa-star icon-mana"></i>Mana</span><span class="stat-value">${Math.ceil(player.stats.mana)} / ${player.stats.maxMana}</span></div>`;
+        statsHtml += `<hr><div class="stat-line"><span class="stat-label"><i class="fas fa-hand-fist icon-strength"></i>Strength</span><span class="stat-value">${Math.floor(player.stats.strength)}</span></div><div class="stat-line"><span class="stat-label"><i class="fas fa-feather icon-agility"></i>Agility</span><span class="stat-value">${Math.floor(player.stats.agility)}</span></div><div class="stat-line"><span class="stat-label"><i class="fas fa-shield-heart icon-stamina"></i>Stamina</span><span class="stat-value">${Math.floor(player.stats.stamina)}</span></div>`;
+        if (player.race === 'Elf') statsHtml += `<div class="stat-line"><span class="stat-label"><i class="fas fa-brain icon-intellect"></i>Intellect</span><span class="stat-value">${Math.floor(player.stats.intellect)}</span></div>`;
+        statsHtml += `<div class="stat-line"><span class="stat-label"><i class="fas fa-dove icon-spirit"></i>Spirit</span><span class="stat-value">${Math.floor(player.stats.spirit)}</span></div><hr><div class="stat-line"><span class="stat-label"><i class="fas fa-sword icon-ap"></i>Attack Power</span><span class="stat-value">${player.stats.attackPower.toFixed(1)}</span></div><div class="stat-line"><span class="stat-label"><i class="fas fa-crosshairs icon-crit"></i>Crit Chance</span><span class="stat-value">${(player.stats.critChance * 100).toFixed(2)}%</span></div><div class="stat-line"><span class="stat-label"><i class="fas fa-person-running icon-dodge"></i>Dodge Chance</span><span class="stat-value">${(player.stats.dodgeChance * 100).toFixed(2)}%</span></div><div class="stat-line"><span class="stat-label"><i class="fas fa-shield icon-armor"></i>Armor</span><span class="stat-value">${player.stats.armor}</span></div>`;
         
-        let professionsHtml = '<hr><h3>Professions</h3>';
+        let professionsHtml = '<hr><h3><i class="fas fa-hammer"></i> Professions</h3>';
         for (const profName in player.professions) {
             const prof = player.professions[profName];
             if (prof.level > 0) {
@@ -3688,7 +3688,7 @@ class UI {
             const petPanel = document.createElement('div');
             petPanel.id = 'pet-info-panel';
             petPanel.innerHTML = `
-                <hr><h3>Pet Companion</h3>
+                <hr><h3><i class="fas fa-paw"></i> Pet Companion</h3>
                 <div class="stat-line"><span>${petData.name}</span><span>Level ${petStore.level}</span></div>
                 <div class="pet-xp-bar" title="XP: ${petStore.xp} / ${nextLevelXp}">
                     <div class="pet-xp-bar-fill" style="width: ${xpPercent}%;"></div>
