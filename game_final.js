@@ -609,6 +609,47 @@ const GameData = {
     },
 };
 
+GameData.ACHIEVEMENTS = {
+    combat: {
+        name: "Combat",
+        icon: "fa-sword",
+        achievements: [
+            { id: "first_blood", name: "First Blood", description: "Kill 10 enemies.", criteria: { type: "kill", count: 10 }, rewards: { gold: 100, xp: 50 } },
+            { id: "slayer", name: "Slayer", description: "Kill 100 enemies.", criteria: { type: "kill", count: 100 }, rewards: { gold: 500, xp: 200 } },
+            { id: "mass_murderer", name: "Mass Murderer", description: "Kill 500 enemies.", criteria: { type: "kill", count: 500 }, rewards: { gold: 2000, xp: 1000 } },
+            { id: "wolf_hunter", name: "Wolf Hunter", description: "Kill 50 Wolves.", criteria: { type: "kill", target: "WOLF", count: 50 }, rewards: { gold: 1000, xp: 500 } },
+            { id: "spider_slayer", name: "Spider Slayer", description: "Kill 50 Spiders.", criteria: { type: "kill", target: "SPIDER", count: 50 }, rewards: { gold: 1000, xp: 500 } },
+        ]
+    },
+    professions: {
+        name: "Professions",
+        icon: "fa-hammer",
+        achievements: [
+            { id: "apprentice", name: "Apprentice", description: "Craft 10 items.", criteria: { type: "craft", count: 10 }, rewards: { gold: 100, xp: 50 } },
+            { id: "artisan", name: "Artisan", description: "Craft 100 items.", criteria: { type: "craft", count: 100 }, rewards: { gold: 500, xp: 200 } },
+            { id: "master_crafter", name: "Master Crafter", description: "Craft 500 items.", criteria: { type: "craft", count: 500 }, rewards: { gold: 2000, xp: 1000 } },
+        ]
+    },
+    exploration: {
+        name: "Exploration",
+        icon: "fa-map",
+        achievements: [
+            { id: "gatherer", name: "Gatherer", description: "Gather 50 resources.", criteria: { type: "gather", count: 50 }, rewards: { gold: 100, xp: 50 } },
+            { id: "resourceful", name: "Resourceful", description: "Gather 250 resources.", criteria: { type: "gather", count: 250 }, rewards: { gold: 500, xp: 200 } },
+            { id: "harvester", name: "Harvester", description: "Gather 1000 resources.", criteria: { type: "gather", count: 1000 }, rewards: { gold: 2000, xp: 1000 } },
+        ]
+    },
+    quests: {
+        name: "Quests",
+        icon: "fa-book-open",
+        achievements: [
+            { id: "helper", name: "Helper", description: "Complete 5 quests.", criteria: { type: "quest", count: 5 }, rewards: { gold: 200, xp: 100 } },
+            { id: "adventurer", name: "Adventurer", description: "Complete 25 quests.", criteria: { type: "quest", count: 25 }, rewards: { gold: 1000, xp: 500 } },
+            { id: "champion", name: "Champion", description: "Complete 100 quests.", criteria: { type: "quest", count: 100 }, rewards: { gold: 5000, xp: 2000 } },
+        ]
+    }
+};
+
 let game;
 
 // --- Game Class (with new/updated methods) ---
@@ -702,7 +743,13 @@ class Game {
                 }, {}),
                 hasHouse: this.player.hasHouse,
                 pets: this.player.pets,
-                activePetId: this.player.activePetId
+                activePetId: this.player.activePetId,
+                totalKills: this.player.totalKills,
+                totalCrafts: this.player.totalCrafts,
+                totalGathers: this.player.totalGathers,
+                totalQuests: this.player.totalQuests,
+                killsByType: { ...this.player.killsByType },
+                claimedAchievements: { ...this.player.claimedAchievements }
             }
         };
 
@@ -730,7 +777,7 @@ class Game {
 
             this.spawnEntities();
             
-            this.player.name = pData.name; this.player.race = pData.race; this.player.x = pData.x; this.player.y = pData.y; this.player.level = pData.level; this.player.xp = pData.xp; this.player.restedXp = pData.restedXp; this.player.gold = pData.gold; this.player.baseStats = { ...pData.baseStats }; this.player.talents = { ...pData.talents }; this.player.talentPoints = pData.talentPoints; this.player.reputation = { ...pData.reputation }; this.player.professions = { ...pData.professions }; this.player.pets = pData.pets || {}; this.player.activePetId = pData.activePetId || null; this.player.nextLevelXp = GameData.XP_TABLE[this.player.level] || 99999; 
+            this.player.name = pData.name; this.player.race = pData.race; this.player.x = pData.x; this.player.y = pData.y; this.player.level = pData.level; this.player.xp = pData.xp; this.player.restedXp = pData.restedXp; this.player.gold = pData.gold; this.player.baseStats = { ...pData.baseStats }; this.player.talents = { ...pData.talents }; this.player.talentPoints = pData.talentPoints; this.player.reputation = { ...pData.reputation }; this.player.professions = { ...pData.professions }; this.player.pets = pData.pets || {}; this.player.activePetId = pData.activePetId || null; this.player.nextLevelXp = GameData.XP_TABLE[this.player.level] || 99999; this.player.totalKills = pData.totalKills || 0; this.player.totalCrafts = pData.totalCrafts || 0; this.player.totalGathers = pData.totalGathers || 0; this.player.totalQuests = pData.totalQuests || 0; this.player.killsByType = pData.killsByType || {}; this.player.claimedAchievements = pData.claimedAchievements || {}; 
             this.player.hasHouse = pData.hasHouse || false;
             this.player.storage = (pData.storage || new Array(99).fill(null)).map(itemData => {
                  if (!itemData) return null;
@@ -1045,7 +1092,7 @@ class Game {
         }));
 
         $$('.window').forEach(win => this.ui.makeDraggable(win));
-        window.addEventListener('keydown', (e) => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; const keyMap = {c: '#character-window', i: '#inventory-window', l: '#quest-log-window', n: '#talent-window', p: '#spellbook-window', u: '#reputation-window', m: '#map-window'}; if(keyMap[e.key.toLowerCase()]){ const win = $(keyMap[e.key.toLowerCase()]); const willShow = win.style.display !== 'flex'; win.style.display = willShow ? 'flex' : 'none'; if (willShow && this.isMobile) { const rect = win.getBoundingClientRect(); win.style.top = Math.max(0, ((window.innerHeight - rect.height) / 2)) + "px"; win.style.left = Math.max(0, ((window.innerWidth - rect.width) / 2)) + "px"; win.dataset.dragCentered = "1"; } this.ui.updateAll(this.player); } });
+        window.addEventListener('keydown', (e) => { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; const keyMap = {c: '#character-window', i: '#inventory-window', l: '#quest-log-window', n: '#talent-window', p: '#spellbook-window', u: '#reputation-window', m: '#map-window', a: '#achievement-window'}; if(keyMap[e.key.toLowerCase()]){ const win = $(keyMap[e.key.toLowerCase()]); const willShow = win.style.display !== 'flex'; win.style.display = willShow ? 'flex' : 'none'; if (willShow && this.isMobile) { const rect = win.getBoundingClientRect(); win.style.top = Math.max(0, ((window.innerHeight - rect.height) / 2)) + "px"; win.style.left = Math.max(0, ((window.innerWidth - rect.width) / 2)) + "px"; win.dataset.dragCentered = "1"; } this.ui.updateAll(this.player); } });
         $('#release-spirit-button').addEventListener('click', () => this.player.releaseSpirit());
         
         window.addEventListener('mouseleave', () => { 
@@ -1383,6 +1430,14 @@ class Player extends Character {
         this.gatheringTotalTime = 0;
         this.gatheringTargetNode = null;
 
+        // Achievement tracking
+        this.totalKills = 0;
+        this.totalCrafts = 0;
+        this.totalGathers = 0;
+        this.totalQuests = 0;
+        this.killsByType = {};
+        this.claimedAchievements = {};
+
         this.addItem(1, 1);
         this.addItem(5, 3);
         this.recalculateStats();
@@ -1426,8 +1481,9 @@ class Player extends Character {
         this.gainProfessionXp(node.type.requiredSkill, 5, -40);
         this.addXp(10, -60);
         
-        // --- FIX: Pass the dynamic amount to addItem ---
         this.addItem(node.type.itemId, gatherAmount);
+        this.totalGathers += gatherAmount;
+        this.checkAchievements('gather');
         
         if (node.type.itemId === 7) {
             this.addRecipe('copper_bar');
@@ -2266,8 +2322,52 @@ class Player extends Character {
             });
         });
     }
+
+    getAchievementCriteriaValue(criteria) {
+        if (criteria.type === 'kill') {
+            if (criteria.target) return this.killsByType[criteria.target] || 0;
+            return this.totalKills;
+        }
+        if (criteria.type === 'craft') return this.totalCrafts;
+        if (criteria.type === 'gather') return this.totalGathers;
+        if (criteria.type === 'quest') return this.totalQuests;
+        return 0;
+    }
+
+    checkAchievements(type) {
+        for (const catKey in GameData.ACHIEVEMENTS) {
+            const cat = GameData.ACHIEVEMENTS[catKey];
+            for (const ach of cat.achievements) {
+                if (ach.criteria.type !== type) continue;
+                if (this.claimedAchievements[ach.id]) continue;
+                const current = this.getAchievementCriteriaValue(ach.criteria);
+                if (current >= ach.criteria.count) {
+                    game.ui.showAchievementToast(ach);
+                }
+            }
+        }
+    }
+
+    claimAchievement(achId) {
+        if (this.claimedAchievements[achId]) return false;
+        for (const catKey in GameData.ACHIEVEMENTS) {
+            const cat = GameData.ACHIEVEMENTS[catKey];
+            for (const ach of cat.achievements) {
+                if (ach.id !== achId) continue;
+                const current = this.getAchievementCriteriaValue(ach.criteria);
+                if (current < ach.criteria.count) return false;
+                this.claimedAchievements[achId] = true;
+                if (ach.rewards.gold) this.gold += ach.rewards.gold;
+                if (ach.rewards.xp) this.addXp(ach.rewards.xp);
+                game.ui.updateAll(this);
+                game.createFloatingText(`Achievement Rewards Claimed!`, this.x, this.y, '#a335ee');
+                return true;
+            }
+        }
+        return false;
+    }
     
-        craftItem(recipeId) {
+    craftItem(recipeId) {
         const recipe = GameData.CRAFTING_RECIPES[recipeId];
         if (!recipe) return false;
 
@@ -2308,6 +2408,8 @@ class Player extends Character {
         }
         
         this.updateQuestProgress('craft', recipe.itemId);
+        this.totalCrafts += craftYield;
+        this.checkAchievements('craft');
 
         const profXpGain = recipe.xpGain !== undefined ? recipe.xpGain : 10;
         if (profXpGain > 0) {
@@ -2881,6 +2983,8 @@ class QuestGiver extends NPC {
             if (questData.rewards.recipes) { questData.rewards.recipes.forEach(recipeId => player.addRecipe(recipeId)); }
             
             player.quests = player.quests.filter(q => q.id !== questId);
+            player.totalQuests += 1;
+            player.checkAchievements('quest');
             if (questData.repeatable && questData.cooldown) {
                 player.questCooldowns[questId] = questData.cooldown;
             }
@@ -2957,10 +3061,13 @@ class Enemy extends Character {
     die(killer) { 
         super.die();
         if (killer instanceof Player) {
-            // --- FIX: Use the instance's calculated xpValue, not the template's ---
             killer.addXp(this.xpValue);
             
-            killer.updateQuestProgress('kill', this.type.name.split(" ")[1].toUpperCase());
+            const enemyCode = this.type.name.split(" ")[1].toUpperCase();
+            killer.updateQuestProgress('kill', enemyCode);
+            killer.totalKills += 1;
+            killer.killsByType[enemyCode] = (killer.killsByType[enemyCode] || 0) + 1;
+            killer.checkAchievements('kill');
             if(this.type.reputation) killer.addReputation(this.type.reputation.faction, this.type.reputation.value);
             this.type.lootTable.forEach(item => { if(Math.random() < item.chance) { if(item.gold) { killer.gold += item.gold; game.createFloatingText(`+${UI.formatCurrency(item.gold)}`, this.x, this.y, 'gold'); } if(item.itemId) { const quantity = item.min ? Math.floor(Math.random() * (item.max - item.min + 1)) + item.min : 1; killer.addItem(item.itemId, quantity); const itemData = GameData.ITEMS[item.itemId]; game.createFloatingText(`+ ${itemData.name}`, this.x, this.y - 20, `var(--color-text-${itemData.quality})`); } } });
             game.ui.updateInventory(killer); game.ui.setupActionbar(killer);
@@ -3340,6 +3447,7 @@ class UI {
         if (this.game.isMobile) this.setupMobileActionButtons(player); 
         this.updateMap(player); 
         this.updateStorage(player);
+        if ($('#achievement-window').style.display === 'flex') this.updateAchievementWindow(player);
     }
     
     updatePlayerFrame(player) { $('#player-name').textContent = player.name; $('#player-level').textContent = `Lvl ${player.level}`; $('#player-health-text').textContent = `${Math.ceil(player.stats.health)} / ${player.stats.maxHealth}`; $('#player-health-fill').style.width = `${(player.stats.health / player.stats.maxHealth) * 100}%`; $('#player-mana-bar').style.display = player.race === 'Elf' ? 'block' : 'none'; if (player.race === 'Elf') { $('#player-mana-text').textContent = `${Math.ceil(player.stats.mana)} / ${player.stats.maxMana}`; $('#player-mana-fill').style.width = `${(player.stats.mana / player.stats.maxMana) * 100}%`; } this.updateBuffs(player, 'player-buffs'); }
@@ -3939,6 +4047,71 @@ class UI {
     }
     updateSpellbook(player) { const grid = $('#spellbook-grid'); grid.innerHTML = ''; player.spellbook.forEach((ability, index) => { const slot = document.createElement('div'); slot.className = 'spellbook-slot'; slot.dataset.index = index; slot.dataset.source = 'spellbook'; slot.draggable = true; slot.innerHTML = `<i class="fas ${ability.icon}"></i>`; grid.appendChild(slot); }); if (player.recipes.length > 0) { const recipeSection = document.createElement('div'); recipeSection.innerHTML = '<hr><h3>Recipes</h3><div id="spellbook-recipes-grid" class="spellbook-grid"></div>'; grid.appendChild(recipeSection); const recipeGrid = $('#spellbook-recipes-grid'); player.recipes.forEach((recipe, index) => { const slot = document.createElement('div'); slot.className = 'spellbook-slot'; slot.dataset.index = index; slot.dataset.source = 'recipe'; slot.draggable = false; slot.innerHTML = `<i class="fas ${recipe.icon}"></i>`; recipeGrid.appendChild(slot); }); } }
     updateReputationWindow(player) { const content = $('#reputation-content'); content.innerHTML = ''; for (const factionId in GameData.FACTIONS) { const faction = GameData.FACTIONS[factionId]; const playerRep = player.reputation[factionId] || faction.base; let currentTier = faction.tiers[0]; for (let i = 0; i < faction.tiers.length; i++) { if (playerRep >= faction.values[i]) { currentTier = faction.tiers[i]; } else { break; } } let nextTierValue = ''; const currentTierIndex = faction.tiers.indexOf(currentTier); if (currentTierIndex < faction.tiers.length - 1) { nextTierValue = ` / ${faction.values[currentTierIndex + 1]}`; } content.innerHTML += `<div class="reputation-line"><span>${faction.name} (${currentTier})</span><span>${playerRep}${nextTierValue}</span></div>`; } }
+    updateAchievementWindow(player) {
+        const content = $('#achievement-content');
+        content.innerHTML = '';
+        let html = '';
+        for (const catKey in GameData.ACHIEVEMENTS) {
+            const cat = GameData.ACHIEVEMENTS[catKey];
+            html += `<div class="achievement-category"><h3><i class="fas ${cat.icon}"></i> ${cat.name}</h3>`;
+            for (const ach of cat.achievements) {
+                const current = player.getAchievementCriteriaValue(ach.criteria);
+                const pct = Math.min(100, Math.floor((current / ach.criteria.count) * 100));
+                const claimed = player.claimedAchievements[ach.id];
+                const canClaim = current >= ach.criteria.count && !claimed;
+                let rewardsStr = '';
+                if (ach.rewards.gold) rewardsStr += `<span class="ach-reward"><i class="fas fa-coins" style="color:var(--color-gold)"></i> ${UI.formatCurrency(ach.rewards.gold)}</span>`;
+                if (ach.rewards.xp) rewardsStr += `<span class="ach-reward"><i class="fas fa-star" style="color:var(--color-xp)"></i> ${ach.rewards.xp} XP</span>`;
+                html += `<div class="achievement-item ${claimed ? 'claimed' : ''} ${canClaim ? 'can-claim' : ''}" data-achievement-id="${ach.id}">
+                    <div class="ach-info">
+                        <div class="ach-name">${ach.name}</div>
+                        <div class="ach-desc">${ach.description}</div>
+                        <div class="ach-progress-text">${current} / ${ach.criteria.count}</div>
+                        <div class="ach-progress-bar"><div class="ach-progress-fill" style="width:${pct}%"></div></div>
+                        <div class="ach-rewards">${rewardsStr}</div>
+                    </div>`;
+                if (canClaim) {
+                    html += `<button class="ach-claim-btn">Claim Reward</button>`;
+                } else if (claimed) {
+                    html += `<span class="ach-claimed-badge"><i class="fas fa-check-circle"></i> Claimed</span>`;
+                }
+                html += `</div>`;
+            }
+            html += `</div>`;
+        }
+        content.innerHTML = html;
+        content.querySelectorAll('.ach-claim-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const item = e.target.closest('.achievement-item');
+                const achId = item.dataset.achievementId;
+                player.claimAchievement(achId);
+                this.updateAchievementWindow(player);
+            });
+        });
+    }
+    showAchievementToast(ach) {
+        const existing = $('#achievement-toast-container');
+        if (!existing) {
+            const container = document.createElement('div');
+            container.id = 'achievement-toast-container';
+            document.getElementById('hud').appendChild(container);
+        }
+        const toast = document.createElement('div');
+        toast.className = 'achievement-toast';
+        toast.innerHTML = `<div class="ach-toast-icon"><i class="fas fa-trophy" style="color:var(--color-text-quest)"></i></div>
+            <div class="ach-toast-body">
+                <div class="ach-toast-title">Achievement Unlocked!</div>
+                <div class="ach-toast-name">${ach.name}</div>
+                <div class="ach-toast-desc">${ach.description}</div>
+            </div>`;
+        const container = $('#achievement-toast-container');
+        container.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.add('show'));
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 500);
+        }, 4000);
+    }
     updateBuffs(character, containerId) { const container = $(`#${containerId}`); container.innerHTML = ''; if(!character || !character.buffs) return; character.buffs.forEach(buff => { const div = document.createElement('div'); div.className = 'buff-icon'; if (buff.isDebuff) div.classList.add('debuff'); div.dataset.buffId = buff.id; div.innerHTML = `<i class="fas ${buff.icon}"></i><div class="buff-duration">${(buff.duration/1000).toFixed(0)}</div>`; container.appendChild(div); }); }
     openVendorWindow(player, vendor) {
         this.needsVendorUpdate = true;
